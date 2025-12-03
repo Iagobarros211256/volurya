@@ -34,16 +34,12 @@ body {font-family: "Russo One", serif;}
     background: transparent;
     color: white;
     }
+
+
+/*band logo que eu chamei de hero */
   
-  
-
-
-
-
-
-
-.hero {
-  height: 100vh;
+  .hero {
+  min-height: 100vh;
   background: #000;
 }
 
@@ -51,7 +47,7 @@ body {font-family: "Russo One", serif;}
   width: 1000px;
   opacity: 0;
   animation: fadeIn 1s ease-out forwards,
-             microShake 0.15s ease-in-out 1s 2,
+             microShake 0.10s ease-in-out 1s 2,
              glowPulse 3s ease-in-out 1.3s infinite;
 }
 
@@ -74,7 +70,26 @@ body {font-family: "Russo One", serif;}
   100% { filter: drop-shadow(0 0 2px #ff0000); }
 }
 
-    
+/*media queries do hero logo*/
+
+@media (max-width: 576px) {
+  .hero-logo {
+    width: 160px;
+  }
+}
+
+@media (min-width: 577px) and (max-width: 768px) {
+  .hero-logo {
+    width: 200px;
+  }
+}
+
+.hero-logo {
+  width: 1000px; 
+}
+
+
+
 
 
 
