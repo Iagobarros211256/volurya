@@ -1,0 +1,25 @@
+services:
+  volurya:
+    container_name: volurya
+    image: volurya
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - volurya_postgres
+
+  volurya_postgres:
+    image: postgres:16
+    container_name: volurya_postgres
+    environment:
+      POSTGRES_USER: volurya
+      POSTGRES_PASSWORD: volurya
+      POSTGRES_DB: volurya_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  pgdata:
