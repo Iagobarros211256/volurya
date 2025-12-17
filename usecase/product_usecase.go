@@ -44,7 +44,6 @@ func (pu *ProductUsecase) GetProductById(id_product int) (*models.Product, error
 
 func (pu *ProductUsecase) UpdateProduct(id_product int, Name string, Description string, Price float64, Stock int) (*models.Product, error) {
 
-	// 🔒 Regra de negócio
 	if Price < 0 {
 		return nil, errors.New("price cannot be negative")
 	}
@@ -58,5 +57,28 @@ func (pu *ProductUsecase) UpdateProduct(id_product int, Name string, Description
 		return nil, err
 	}
 
+	return product, nil
+}
+
+func (pu *ProductUsecase) Delete(id int) (*models.Product, error) {
+
+	// 1. verificar existência
+	product, err := pu.repository.GetProductById(id)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. regra de negócio (exemplo)
+	if product.Stock > 0 {
+		return nil, errors.New("cannot delete product with stock")
+	}
+
+	// 3. deletar de fato
+	err = pu.repository.Delete(id)
+	if err != nil {
+		return nil, err
+	}
+
+	// 4. retornar o que foi deletado (opcional)
 	return product, nil
 }
