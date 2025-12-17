@@ -137,4 +137,20 @@ func (pr *ProductRepository) UpdateProduct(id_product int, Name string, Descript
 	return &produto, nil
 }
 
-//delete one
+// delete one
+func (pr *ProductRepository) DeleteProductByID(id int64) (int64, error) {
+	var deletedID int64
+
+	query := `
+		DELETE FROM product
+		WHERE id = $1
+		RETURNING id
+	`
+
+	err := pr.connection.QueryRow(query, id).Scan(&deletedID)
+	if err != nil {
+		return 0, err
+	}
+
+	return deletedID, nil
+}
