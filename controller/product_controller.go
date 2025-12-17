@@ -3,6 +3,8 @@ package controller
 import (
 	"api/models"
 	"api/usecase"
+	"database/sql"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -135,4 +137,41 @@ func (p *productController) UpdateProduct(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, product)
+}
+
+func (p *productController) Delete(ctx *gin.Context) {
+
+	idParam := ctx.Param("productId")
+	if idParam == "" {
+		ctx.JSON(http.StatusBadRequest, models.Response{
+			Message: "Id do produto nao pode ser nulo",
+		})
+		return
+	}
+
+	productId, err := strconv.Atoi(idParam)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, models.Response{
+			Message: "Id do produto precisa ser um numero",
+		})
+		return
+	}
+
+	err = p.productUseCase.Delete(productId)
+	if err != nil {
+
+		if errors.Is(err, sql.ErrNoRows) {
+			ctx.JSON(http.StatusNotFound, models.Response{
+				Message: "Produto nao encontrado",
+			})
+			return
+		}
+
+		ctx.JSON(http.StatusInternalServerError, models.Response{
+			Message: err.Error(),
+		})
+		return
+	}
+
+	ctx.Status(http.StatusNoContent) // 204
 }
