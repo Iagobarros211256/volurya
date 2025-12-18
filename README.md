@@ -52,5 +52,7 @@ deve voltar isso:
 
 //testar crud
 get localhost:8000/products //get all products
-post localhost:8000/product // create a new product
-get localhost:8000/product/1 // get one product
+post localhost:8000/products // create a new product
+get localhost:8000/products/1 // get one product
+delete localhost:8000/products/3  //delete one
+put localhost:8000/products/6  //update one
