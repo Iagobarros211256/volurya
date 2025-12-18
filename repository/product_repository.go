@@ -19,8 +19,11 @@ func NewProductRepository(connection *sql.DB) ProductRepository {
 }
 
 // crud
-// get all
-func (pr *ProductRepository) GetProducts(limit int, cursor *int) ([]models.Product, bool, error) {
+// get all com pagination by a cursor (or indexer)
+func (pr *ProductRepository) GetProducts(
+	limit int,
+	cursor *int,
+) ([]models.Product, bool, error) {
 
 	query := `
 		SELECT id, name, description, price, stock
@@ -28,13 +31,15 @@ func (pr *ProductRepository) GetProducts(limit int, cursor *int) ([]models.Produ
 	`
 
 	args := []any{}
+	paramIndex := 1
 
 	if cursor != nil {
-		query += " WHERE id > $1"
+		query += fmt.Sprintf(" WHERE id > $%d", paramIndex)
 		args = append(args, *cursor)
+		paramIndex++
 	}
 
-	query += " ORDER BY id ASC LIMIT $2"
+	query += fmt.Sprintf(" ORDER BY id ASC LIMIT $%d", paramIndex)
 	args = append(args, limit+1)
 
 	rows, err := pr.connection.Query(query, args...)
@@ -43,7 +48,7 @@ func (pr *ProductRepository) GetProducts(limit int, cursor *int) ([]models.Produ
 	}
 	defer rows.Close()
 
-	products := make([]models.Product, 0)
+	products := []models.Product{}
 
 	for rows.Next() {
 		var p models.Product
@@ -56,7 +61,6 @@ func (pr *ProductRepository) GetProducts(limit int, cursor *int) ([]models.Produ
 		); err != nil {
 			return nil, false, err
 		}
-
 		products = append(products, p)
 	}
 
