@@ -23,13 +23,26 @@ func NewProductController(usecase usecase.ProductUsecase) productController {
 
 func (p *productController) GetProducts(ctx *gin.Context) {
 
-	products, err := p.productUseCase.GetProducts()
+	limit := ctx.Query("limit")
+	cursor := ctx.Query("cursor")
+
+	products, nextCursor, hasMore, err :=
+		p.productUseCase.GetProducts(limit, cursor)
+
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, products)
+	ctx.JSON(http.StatusOK, gin.H{
+		"data": products,
+		"pagination": gin.H{
+			"next_cursor": nextCursor,
+			"has_more":    hasMore,
+		},
+	})
 }
 
 func (p *productController) CreateProduct(ctx *gin.Context) {

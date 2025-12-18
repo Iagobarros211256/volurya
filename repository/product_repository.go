@@ -20,37 +20,53 @@ func NewProductRepository(connection *sql.DB) ProductRepository {
 
 // crud
 // get all
-func (pr *ProductRepository) GetProducts() ([]models.Product, error) {
+func (pr *ProductRepository) GetProducts(limit int, cursor *int) ([]models.Product, bool, error) {
 
-	query := "SELECT id, name, description, price, stock FROM product"
-	rows, err := pr.connection.Query(query)
-	if err != nil {
-		fmt.Println(err)
-		return []models.Product{}, err
+	query := `
+		SELECT id, name, description, price, stock
+		FROM product
+	`
+
+	args := []any{}
+
+	if cursor != nil {
+		query += " WHERE id > $1"
+		args = append(args, *cursor)
 	}
 
-	var productList []models.Product
-	var productObj models.Product
+	query += " ORDER BY id ASC LIMIT $2"
+	args = append(args, limit+1)
+
+	rows, err := pr.connection.Query(query, args...)
+	if err != nil {
+		return nil, false, err
+	}
+	defer rows.Close()
+
+	products := make([]models.Product, 0)
 
 	for rows.Next() {
-		err = rows.Scan(
-			&productObj.ID,
-			&productObj.Name,
-			&productObj.Description,
-			&productObj.Price,
-			&productObj.Stock)
-
-		if err != nil {
-			fmt.Println(err)
-			return []models.Product{}, err
+		var p models.Product
+		if err := rows.Scan(
+			&p.ID,
+			&p.Name,
+			&p.Description,
+			&p.Price,
+			&p.Stock,
+		); err != nil {
+			return nil, false, err
 		}
 
-		productList = append(productList, productObj)
+		products = append(products, p)
 	}
 
-	rows.Close()
+	hasMore := false
+	if len(products) > limit {
+		hasMore = true
+		products = products[:limit]
+	}
 
-	return productList, nil
+	return products, hasMore, nil
 }
 
 // create one        ?/in future whe will need a create many func/?

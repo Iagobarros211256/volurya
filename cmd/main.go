@@ -5,6 +5,7 @@ import (
 	"api/db"
 	"api/repository"
 	"api/usecase"
+	"log"
 
 	"github.com/gin-gonic/gin"
 )
@@ -38,6 +39,7 @@ func main() {
 	server.GET("/products/:productId", ProductController.GetProductById)
 	server.PUT("/products/:productId", ProductController.UpdateProduct)
 	server.DELETE("/products/:productId", ProductController.Delete)
+	log.Println("API Volurya rodando na porta 8080")
 
 	server.Run(":8000")
 

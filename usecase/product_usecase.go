@@ -4,6 +4,7 @@ import (
 	"api/models"
 	"api/repository"
 	"errors"
+	"strconv"
 )
 
 type ProductUsecase struct {
@@ -16,8 +17,48 @@ func NewProductUseCase(repo repository.ProductRepository) ProductUsecase {
 	}
 }
 
-func (pu *ProductUsecase) GetProducts() ([]models.Product, error) {
-	return pu.repository.GetProducts()
+func (pu *ProductUsecase) GetProducts(limitStr string, cursorStr string) ([]models.Product, *int, bool, error) {
+
+	const (
+		defaultLimit = 10
+		maxLimit     = 50
+	)
+
+	limit := defaultLimit
+	if limitStr != "" {
+		parsedLimit, err := strconv.Atoi(limitStr)
+		if err != nil || parsedLimit <= 0 {
+			return nil, nil, false, errors.New("invalid limit")
+		}
+		if parsedLimit > maxLimit {
+			limit = maxLimit
+		} else {
+			limit = parsedLimit
+		}
+	}
+
+	var cursor *int
+	if cursorStr != "" {
+		parsedCursor, err := strconv.Atoi(cursorStr)
+		if err != nil || parsedCursor < 0 {
+			return nil, nil, false, errors.New("invalid cursor")
+		}
+		cursor = &parsedCursor
+	}
+
+	products, hasMore, err :=
+		pu.repository.GetProducts(limit, cursor)
+	if err != nil {
+		return nil, nil, false, err
+	}
+
+	var nextCursor *int
+	if hasMore && len(products) > 0 {
+		lastID := products[len(products)-1].ID
+		nextCursor = &lastID
+	}
+
+	return products, nextCursor, hasMore, nil
 }
 
 func (pu *ProductUsecase) CreateProduct(product models.Product) (models.Product, error) {
