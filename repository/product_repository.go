@@ -73,7 +73,7 @@ func (pr *ProductRepository) GetProducts(
 	return products, hasMore, nil
 }
 
-// create one        ?/in future whe will need a create many func/?
+// create one        ?/in future whe will need a |create many| func/?
 func (pr *ProductRepository) CreateProduct(product models.Product) (int, error) {
 
 	var id int

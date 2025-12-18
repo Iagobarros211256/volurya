@@ -84,7 +84,7 @@ func (pu *ProductUsecase) GetProductById(id_product int) (*models.Product, error
 }
 
 func (pu *ProductUsecase) UpdateProduct(id_product int, Name string, Description string, Price float64, Stock int) (*models.Product, error) {
-	// essas regras nao serao necessarias agora mas no ffutoro e num ambiente de producao serao indispensaveis
+	// essas regras nao serao necessarias agora mas no futuro e num ambiente de producao serao indispensaveis
 	if Price < 0 {
 		return nil, errors.New("price cannot be negative")
 	}
