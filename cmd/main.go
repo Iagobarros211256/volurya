@@ -25,16 +25,19 @@ func main() {
 	//Camada de controllers
 	ProductController := controller.NewProductController(ProductUseCase)
 
+	//mensagem teste para saber se o server is up
 	server.GET("/ping", func(ctx *gin.Context) {
 		ctx.JSON(200, gin.H{
 			"message": "pong",
 		})
 	})
 
+	//rotas crud
 	server.GET("/products", ProductController.GetProducts)
-	server.POST("/product", ProductController.CreateProduct)
-	server.GET("/product/:productId", ProductController.GetProductById)
-	server.PUT("/product/:productId", ProductController.UpdateProduct)
+	server.POST("/products", ProductController.CreateProduct)
+	server.GET("/products/:productId", ProductController.GetProductById)
+	server.PUT("/products/:productId", ProductController.UpdateProduct)
+	server.DELETE("/products/:productId", ProductController.Delete)
 
 	server.Run(":8000")
 

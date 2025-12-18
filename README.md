@@ -40,5 +40,17 @@ volurya_db=# SELECT * FROM product;
 
 
 comandos no postman para ver se as rotas crud funcionam :
+
+//testar se a porta e docker estao ativos mesmo:
+GET http://localhost:8000/ping
+
+deve voltar isso:
+{
+  "message": "pong"
+}
+
+
+//testar crud
 get localhost:8000/products //get all products
 post localhost:8000/product // create a new product
+get localhost:8000/product/1 // get one product
