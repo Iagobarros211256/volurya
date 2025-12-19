@@ -8,6 +8,8 @@ sudo docker exec -it volurya_postgres psql -U volurya -d volurya_db
 
 SELECT * FROM product;
 
+SELECT * FROM users;
+
 
 
 

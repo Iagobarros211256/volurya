@@ -1,6 +1,7 @@
 package main
 
 import (
+	"api/auth"
 	"api/controller"
 	"api/db"
 	"api/repository"
@@ -19,28 +20,36 @@ func main() {
 		panic(err)
 	}
 
-	//Camada de repository
-	ProductRepository := repository.NewProductRepository(dbConnection)
-	//Camada usecase
-	ProductUseCase := usecase.NewProductUseCase(ProductRepository)
-	//Camada de controllers
-	ProductController := controller.NewProductController(ProductUseCase)
+	// ---------- REPOSITORIES ----------
+	productRepository := repository.NewProductRepository(dbConnection)
+	userRepository := repository.NewUserRepository(dbConnection)
 
-	//mensagem teste para saber se o server is up
+	// ---------- USECASES ----------
+	productUseCase := usecase.NewProductUseCase(productRepository)
+	authUseCase := usecase.NewAuthUsecase(userRepository)
+
+	// ---------- CONTROLLERS ----------
+	productController := controller.NewProductController(productUseCase)
+	authController := controller.NewAuthController(authUseCase)
+
+	// ---------- ROTAS PÚBLICAS ----------
 	server.GET("/ping", func(ctx *gin.Context) {
-		ctx.JSON(200, gin.H{
-			"message": "pong",
-		})
+		ctx.JSON(200, gin.H{"message": "pong"})
 	})
+	server.POST("/signup", authController.Signup)
+	server.POST("/login", authController.Login)
 
-	//rotas crud
-	server.GET("/products", ProductController.GetProducts)
-	server.POST("/products", ProductController.CreateProduct)
-	server.GET("/products/:productId", ProductController.GetProductById)
-	server.PUT("/products/:productId", ProductController.UpdateProduct)
-	server.DELETE("/products/:productId", ProductController.Delete)
-	log.Println("API Volurya rodando na porta 8080")
+	// ---------- ROTAS PROTEGIDAS ----------
+	protected := server.Group("/")
+	protected.Use(auth.Middleware())
+	{
+		protected.GET("/products", productController.GetProducts)
+		protected.POST("/products", productController.CreateProduct)
+		protected.GET("/products/:productId", productController.GetProductById)
+		protected.PUT("/products/:productId", productController.UpdateProduct)
+		protected.DELETE("/products/:productId", productController.Delete)
+	}
 
+	log.Println("API Volurya rodando na porta 8000")
 	server.Run(":8000")
-
 }
