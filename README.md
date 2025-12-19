@@ -1,5 +1,6 @@
 verify data no psql from docker container always :
 
+sudo docker compose up --build
 sudo docker start volurya
 sudo docker start volurya_postgres
 sudo docker ps

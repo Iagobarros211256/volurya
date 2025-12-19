@@ -48,14 +48,16 @@ func (p *productController) GetProducts(ctx *gin.Context) {
 func (p *productController) CreateProduct(ctx *gin.Context) {
 
 	var product models.Product
-	err := ctx.BindJSON(&product)
-
-	if err != nil {
+	if err := ctx.BindJSON(&product); err != nil {
 		ctx.JSON(http.StatusBadRequest, err)
 		return
 	}
 
-	insertedProduct, err := p.productUseCase.CreateProduct(product)
+	userID := ctx.GetInt("user_id") //  vem do middleware JWT
+
+	insertedProduct, err :=
+		p.productUseCase.CreateProduct(userID, product)
+
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
@@ -170,7 +172,9 @@ func (p *productController) Delete(ctx *gin.Context) {
 		return
 	}
 
-	err = p.productUseCase.Delete(productId)
+	userID := ctx.GetInt("user_id") //  JWT
+
+	err = p.productUseCase.Delete(userID, productId)
 	if err != nil {
 
 		if errors.Is(err, sql.ErrNoRows) {

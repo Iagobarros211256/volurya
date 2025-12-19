@@ -61,7 +61,7 @@ func (pu *ProductUsecase) GetProducts(limitStr string, cursorStr string) ([]mode
 	return products, nextCursor, hasMore, nil
 }
 
-func (pu *ProductUsecase) CreateProduct(product models.Product) (models.Product, error) {
+func (pu *ProductUsecase) CreateProduct(userID int, product models.Product) (models.Product, error) {
 
 	productId, err := pu.repository.CreateProduct(product)
 	if err != nil {
@@ -127,6 +127,23 @@ func (pu *ProductUsecase) UpdateProduct(id_product int, Name string, Description
 //return product, nil
 
 // delete one
-func (pu *ProductUsecase) Delete(id int) error {
-	return pu.repository.Delete(id)
+func (pu *ProductUsecase) Delete(userID int, productID int) error {
+	// regra de negócio (exemplo)
+	// só admin ou dono pode deletar
+
+	product, err := pu.repository.GetProductById(productID)
+	if err != nil {
+		return err
+	}
+
+	if product == nil {
+		return errors.New("product not found")
+	}
+
+	// regra futura
+	// if product.OwnerID != userID {
+	//     return errors.New("forbidden")
+	// }
+
+	return pu.repository.Delete(productID)
 }
