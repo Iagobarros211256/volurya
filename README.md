@@ -59,3 +59,142 @@ post localhost:8000/products // create a new product
 get localhost:8000/products/1 // get one product
 delete localhost:8000/products/3  //delete one
 put localhost:8000/products/6  //update one
+
+TESTE COMPLETO NO POSTMAN DO JWT — AUTH + PRODUCTS (NO POSTMAN)
+
+Testar se a API está viva:
+
+GET
+
+http://localhost:8000/ping
+
+ Esperado :
+{
+  "message": "pong"
+}
+
+
+
+Criar usuário (SIGNUP) ;
+
+POST
+http://localhost:8000/signup
+
+Headers
+Content-Type: application/json
+
+Body (raw → JSON)
+{
+  "email": "admin@volurya.com",
+  "password": "123456"
+}
+
+Esperado:
+{
+  "message": "user created"
+}
+
+
+
+👉 Confirme no banco:
+
+SELECT * FROM users;
+
+
+Se não apareceu → problema no repository.
+
+Fazer login (LOGIN): 
+POST
+http://localhost:8000/login
+
+Body
+{
+  "email": "admin@volurya.com",
+  "password": "123456"
+}
+
+Esperado :
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+
+
+Copia esse token inteiro (sem aspas).
+
+
+
+Testar rota protegida SEM token (tem que falhar):
+GET
+http://localhost:8000/products
+
+Esperado
+{
+  "error": "unauthorized"
+}
+
+
+Se NÃO falhar → middleware não está sendo usado.
+
+Testar rota protegida COM token:
+GET
+http://localhost:8000/products
+
+Headers
+Authorization: Bearer SEU_TOKEN_AQUI
+
+
+Exemplo:
+
+Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+
+Esperado:
+
+Lista de produtos (vazia ou não)
+
+Status 200
+
+Middleware + JWT funcionando
+
+Criar produto (rota protegida):
+POST
+http://localhost:8000/products
+
+Headers
+Authorization: Bearer SEU_TOKEN
+Content-Type: application/json
+
+Body
+{
+  "name": "Camiseta Volurya",
+  "price": 99.90,
+  "stock": 10
+}
+
+Esperado
+
+Produto criado (ou objeto retornado):
+Debug rápido (se algo der errado)
+🔸 Sempre olhe:
+
+Terminal (logs do Gin)
+
+Mensagem exata do erro
+
+Se o token está exatamente como Bearer <token>
+
+🔸 Token inválido geralmente é:
+
+token com espaço a mais
+
+esqueceu Bearer
+
+token expirado
+
+Mapa mental final do jwt
+POST /signup   → cria usuário
+POST /login    → gera JWT
+JWT            → vai no header
+Middleware     → valida token
+Usecase        → regra
+Repository     → banco
+

@@ -7,11 +7,11 @@ import (
 )
 
 type AuthController struct {
-	authUsecase usecase.AuthUsecase
+	authUsecase *usecase.AuthUsecase
 }
 
-func NewAuthController(uc usecase.AuthUsecase) AuthController {
-	return AuthController{
+func NewAuthController(uc *usecase.AuthUsecase) *AuthController {
+	return &AuthController{
 		authUsecase: uc,
 	}
 }
