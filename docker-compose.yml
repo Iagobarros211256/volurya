@@ -7,6 +7,9 @@ services:
       - "8000:8000"
     depends_on:
       - volurya_postgres
+    volumes:
+      - ./:/go/src/app   # monta o código atual no container  
+      
 
   volurya_postgres:
     image: postgres:16

@@ -1,16 +1,18 @@
 FROM golang:1.25.4
 
-# set working directory
 WORKDIR /go/src/app
 
-# Copy the source code
-COPY . . 
+# Copiar go.mod/go.sum primeiro para cache
+COPY go.mod go.sum ./
+RUN go mod download
 
-#EXPOSE the port
+# Copiar o resto do código
+COPY . .
+
+# Instalar Air
+RUN go install github.com/cosmtrek/air@v1.61.0
+
 EXPOSE 8000
 
-# Build the Go app
-RUN go build -o main cmd/main.go
-
-# Run the executable
-CMD ["./main"]
+# Rodar Air com hot reload
+CMD ["air", "-c", ".air.toml"]

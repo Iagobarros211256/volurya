@@ -3,6 +3,7 @@ verify data no psql from docker container always :
 sudo docker compose up --build
 sudo docker start volurya
 sudo docker start volurya_postgres
+
 sudo docker ps
 sudo docker exec -it volurya_postgres psql -U volurya -d volurya_db
 
@@ -40,6 +41,15 @@ volurya_db=# SELECT * FROM product;
   3 | Bone           | aba aberta           | 300.00 |    10
   4 | Meias volurya  | meias alien m        | 200.00 |    25
 (4 rows)
+
+
+
+volurya_db=# SELECT * FROM users;
+ id |       email       |                           password                           | role  |  created_at         
+----+-------------------+--------------------------------------------------------------+-------+----------------------------
+  1 | admin@volurya.com | $2a$10$jCPYl7hYbfP3LJRLGwyFs.Ko9iIBDiSMi3MeARQU..c.ljKdhci8C | admin | 2025-12-19 22:42:47.611219
+(1 row)
+
 
 
 comandos no postman para ver se as rotas crud funcionam :
@@ -198,3 +208,9 @@ Middleware     → valida token
 Usecase        → regra
 Repository     → banco
 
+
+
+testes :
+
+sudo docker compose up --build
+sudo docker start volurya_postgres_test
