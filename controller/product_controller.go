@@ -12,11 +12,11 @@ import (
 )
 
 type productController struct {
-	productUseCase usecase.ProductUsecase
+	productUseCase *usecase.ProductUsecase
 }
 
-func NewProductController(usecase usecase.ProductUsecase) productController {
-	return productController{
+func NewProductController(usecase *usecase.ProductUsecase) *productController {
+	return &productController{
 		productUseCase: usecase,
 	}
 }
