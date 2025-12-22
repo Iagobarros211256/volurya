@@ -1,13 +1,17 @@
 package main
 
 import (
+	"api/db"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
 func TestHealthEndpoint(t *testing.T) {
-	r := SetupRouter()
+	database := db.SetupTestDB()
+	defer database.Close()
+
+	r := SetupRouter(database)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	resp := httptest.NewRecorder()

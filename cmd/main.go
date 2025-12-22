@@ -51,7 +51,8 @@ func main() {
 	}
 
 	log.Println("API Volurya rodando na porta 8000")
-	r := SetupRouter()
+	database := db.SetupDB() // DB de dev/prod
+	r := SetupRouter(database)
 	r.Run()
 	server.Run(":8000")
 }

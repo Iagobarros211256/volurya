@@ -1,16 +1,24 @@
 package main
 
-import "github.com/gin-gonic/gin"
+import (
+	"database/sql"
 
-func SetupRouter() *gin.Engine {
+	"github.com/gin-gonic/gin"
+)
+
+func SetupRouter(db *sql.DB) *gin.Engine {
 	r := gin.Default()
 
-	// rota básica obrigatória para testes
+	// health não precisa do banco
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status": "ok",
-		})
+		c.JSON(200, gin.H{"status": "ok"})
 	})
+
+	// aqui futuramente entram rotas que usam db
+	// ex:
+	// userRepo := repository.NewUserRepository(db)
+	// userController := controller.NewUserController(userRepo)
+	// r.POST("/users", userController.Create)
 
 	return r
 }
