@@ -19,8 +19,9 @@ func SetupRouter(db *sql.DB) *gin.Engine {
 	// rota POST /users - grava no banco
 	r.POST("/users", func(c *gin.Context) {
 		var user struct {
-			Name  string `json:"name"`
-			Email string `json:"email"`
+			Email    string `json:"email"`
+			Password string `json:"password"`
+			Role     string `json:"role"`
 		}
 
 		// valida payload
@@ -31,9 +32,10 @@ func SetupRouter(db *sql.DB) *gin.Engine {
 
 		// insere no banco
 		_, err := db.Exec(
-			"INSERT INTO users (name, email) VALUES ($1, $2)",
-			user.Name,
+			"INSERT INTO users (email, password, role) VALUES ($1, $2, $3)",
 			user.Email,
+			user.Password,
+			user.Role,
 		)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
