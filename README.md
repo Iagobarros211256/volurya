@@ -214,3 +214,17 @@ testes :
 
 sudo docker compose up --build
 sudo docker start volurya_postgres_test
+
+
+# 1. Subir banco de teste
+docker compose -f docker-compose.test.yml up -d
+
+# 2. Subir API com hot reload
+docker compose up --build
+
+# 3. Testar endpoint
+curl http://localhost:8000/ping
+
+subir usuario teste
+
+INSERT INTO users (email, password, role) VALUES ('admin@volurya.com ', '$2a$10$jCPYl7hYbfP3LJRLGwyFs.Ko9iIBDiSMi3MeARQU..c.ljKdhci8C', 'admin ');

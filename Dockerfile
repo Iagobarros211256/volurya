@@ -10,7 +10,7 @@ RUN go mod download
 COPY . .
 
 # Instalar Air
-RUN go install github.com/cosmtrek/air@v1.61.0
+RUN  go install github.com/air-verse/air@latest
 
 EXPOSE 8000
 
