@@ -1,4 +1,4 @@
-OlVolurya API é um laboratório pessoal para simular práticas usadas em ambientes de produção — como JWT authentication, Clean Architecture, Docker, testes automatizados e CI/CD — aplicadas a um e-commerce simples de produtos relacionados à banda fictícia Volurya.
+Volurya API é um laboratório pessoal para simular práticas usadas em ambientes de produção — como JWT authentication, Clean Architecture, Docker, testes automatizados e CI/CD — aplicadas a um e-commerce simples de produtos relacionados à banda fictícia Volurya.
 
 O projeto foi desenvolvido com foco em aprendizado prático, clareza arquitetural e testes reais, não como produto comercial ativo.
 
