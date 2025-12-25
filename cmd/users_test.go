@@ -1,21 +1,18 @@
 package main
 
 import (
+	"api/db"
 	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"api/db"
 )
 
-func TestCreateUser(t *testing.T) {
-	// 1️⃣ Conecta no banco de teste
+func TestCreateUser_ShouldPersistUserAndReturn201(t *testing.T) {
 	database := db.SetupTestDB()
 	defer database.Close()
 
-	// 2️⃣ Limpa e garante tabela
 	if err := db.CleanTestDB(database); err != nil {
 		t.Fatalf("failed to clean db: %v", err)
 	}
@@ -24,38 +21,34 @@ func TestCreateUser(t *testing.T) {
 		t.Fatalf("failed to ensure tables: %v", err)
 	}
 
-	// 3️⃣ Sobe o router
 	r := SetupRouter(database)
 
-	// 4️⃣ Payload do usuário
 	payload := map[string]string{
 		"name":  "Iago",
 		"email": "iago@test.com",
 	}
 
-	body, _ := json.Marshal(payload)
+	body, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("failed to marshal payload: %v", err)
+	}
 
-	// 5️⃣ Cria request HTTP
-	req := httptest.NewRequest(
-		http.MethodPost,
-		"/users",
-		bytes.NewBuffer(body),
-	)
+	req := httptest.NewRequest(http.MethodPost, "/users", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 
 	resp := httptest.NewRecorder()
-
-	// 6️⃣ Executa request
 	r.ServeHTTP(resp, req)
 
-	// 7️⃣ Valida status HTTP
 	if resp.Code != http.StatusCreated {
 		t.Fatalf("expected 201, got %d", resp.Code)
 	}
 
-	// 8️⃣ Valida que gravou no banco
+	if resp.Body.Len() == 0 {
+		t.Fatal("expected response body, got empty")
+	}
+
 	var count int
-	err := database.QueryRow(
+	err = database.QueryRow(
 		"SELECT COUNT(*) FROM users WHERE email = $1",
 		"iago@test.com",
 	).Scan(&count)

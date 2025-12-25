@@ -3,6 +3,8 @@ package usecase
 import (
 	"api/models"
 	"errors"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserRepository interface {
@@ -28,14 +30,24 @@ func (uc *UserUseCase) Create(user models.User) error {
 		return errors.New("email already exists")
 	}
 
-	// regra 2: role default
-	if user.Role == "" {
-		user.Role = "user"
-	}
-
-	// regra 3: senha obrigatória
+	// regra 2: senha obrigatória
 	if user.Password == "" {
 		return errors.New("password is required")
+	}
+
+	// regra 3: hash da senha (INVARIANTE DE DOMÍNIO)
+	hashed, err := bcrypt.GenerateFromPassword(
+		[]byte(user.Password),
+		bcrypt.DefaultCost,
+	)
+	if err != nil {
+		return err
+	}
+	user.Password = string(hashed)
+
+	// regra 4: role default
+	if user.Role == "" {
+		user.Role = "user"
 	}
 
 	return uc.repo.Create(user)

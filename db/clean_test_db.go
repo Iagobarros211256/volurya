@@ -1,6 +1,9 @@
 package db
 
-import "database/sql"
+import (
+	"database/sql"
+	"fmt"
+)
 
 // Limpa todas as tabelas relevantes entre testes
 func CleanTestDB(db *sql.DB) error {
@@ -11,5 +14,9 @@ func CleanTestDB(db *sql.DB) error {
 		RESTART IDENTITY
 		CASCADE
 	`)
-	return err
+	if err != nil {
+		return fmt.Errorf("clean test db failed: %w", err)
+	}
+	return nil
+
 }

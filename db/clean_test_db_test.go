@@ -2,36 +2,45 @@ package db
 
 import "testing"
 
-func TestCleanTestDB(t *testing.T) {
+func TestCleanTestDB_ShouldRemoveAllData(t *testing.T) {
 	database := SetupTestDB()
 	defer database.Close()
 
-	// Cria tabela users
-	_, err := database.Exec(`CREATE TABLE IF NOT EXISTS users (
-         id SERIAL PRIMARY KEY,
-         email VARCHAR(255) UNIQUE NOT NULL,
-         password VARCHAR(255) NOT NULL,
-         role VARCHAR(50) NOT NULL,
-         created_at TIMESTAMP NOT NULL DEFAULT NOW()
-    )`)
-	if err != nil {
-		t.Fatalf("failed to create users table: %v", err)
+	if err := EnsureTablesExist(database); err != nil {
+		t.Fatalf("failed to ensure tables: %v", err)
 	}
 
-	// Cria tabela products
-	_, err = database.Exec(`CREATE TABLE IF NOT EXISTS products (
-           id SERIAL primary key,
-           name VARCHAR(50) not null,
-           description VARCHAR(200) not null,
-           price NUMERIC(10, 2) not null,
-           stock INTEGER DEFAULT 0 not null  
-    )`)
+	// Insere dados fake
+	_, err := database.Exec(
+		`INSERT INTO users (email, password, role) VALUES ($1, $2, $3)`,
+		"test@test.com",
+		"hashed",
+		"user",
+	)
 	if err != nil {
-		t.Fatalf("failed to create products table: %v", err)
+		t.Fatalf("failed to insert user: %v", err)
 	}
 
-	// Agora chama o CleanTestDB
+	// Sanity check
+	var before int
+	_ = database.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&before)
+	if before == 0 {
+		t.Fatal("expected data before clean")
+	}
+
+	// Act
 	if err := CleanTestDB(database); err != nil {
 		t.Fatalf("clean failed: %v", err)
+	}
+
+	// Assert
+	var after int
+	err = database.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&after)
+	if err != nil {
+		t.Fatalf("count failed: %v", err)
+	}
+
+	if after != 0 {
+		t.Fatalf("expected 0 users after clean, got %d", after)
 	}
 }

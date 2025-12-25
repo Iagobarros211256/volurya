@@ -1,3 +1,7 @@
+“Volurya API é um laboratório pessoal para simular práticas de produção: auth JWT, clean architecture, docker, testes e CI/CD, aplicadas a um e-commerce simples.”
+
+
+
 verify data no psql from docker container always :
 
 sudo docker compose up --build
