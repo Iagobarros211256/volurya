@@ -11,8 +11,8 @@ type ProductUsecase struct {
 	repository repository.ProductRepository
 }
 
-func NewProductUseCase(repo repository.ProductRepository) ProductUsecase {
-	return ProductUsecase{
+func NewProductUsecase(repo repository.ProductRepository) *ProductUsecase {
+	return &ProductUsecase{
 		repository: repo,
 	}
 }

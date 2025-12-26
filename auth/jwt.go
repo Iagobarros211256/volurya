@@ -14,6 +14,7 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+// create a token
 func GenerateToken(userID int, role string) (string, error) {
 
 	claims := Claims{
@@ -29,6 +30,7 @@ func GenerateToken(userID int, role string) (string, error) {
 	return token.SignedString(secret)
 }
 
+// see  if a token is valid
 func ValidateToken(tokenString string) (*Claims, error) {
 
 	token, err := jwt.ParseWithClaims(

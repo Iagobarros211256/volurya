@@ -10,12 +10,12 @@ import (
 )
 
 type AuthUsecase struct {
-	userRepo repository.UserRepository
+	userRepo repository.UserRepositoryInterface
 }
 
-func NewAuthUsecase(repo repository.UserRepository) AuthUsecase {
-	return AuthUsecase{
-		userRepo: repo,
+func NewAuthUsecase(userRepo repository.UserRepositoryInterface) *AuthUsecase {
+	return &AuthUsecase{
+		userRepo: userRepo,
 	}
 }
 

@@ -9,8 +9,13 @@ type UserRepository struct {
 	db *sql.DB
 }
 
-func NewUserRepository(db *sql.DB) UserRepository {
-	return UserRepository{db: db}
+func NewUserRepository(db *sql.DB) *UserRepository {
+	return &UserRepository{db: db}
+}
+
+type UserRepositoryInterface interface {
+	GetByEmail(email string) (*models.User, error)
+	Create(user models.User) error
 }
 
 func (r *UserRepository) GetByEmail(email string) (*models.User, error) {

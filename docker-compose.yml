@@ -1,13 +1,6 @@
-services:
-  volurya:
-    container_name: volurya
-    image: volurya
-    build: .
-    ports:
-      - "8000:8000"
-    depends_on:
-      - volurya_postgres
 
+
+services:
   volurya_postgres:
     image: postgres:16
     container_name: volurya_postgres
@@ -20,6 +13,22 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: always
+
+  volurya:
+    container_name: volurya
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - volurya_postgres
+    volumes:
+      - ./:/go/src/app   # monta o código do host
+    environment:
+      POSTGRES_HOST: volurya_postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: volurya
+      POSTGRES_PASSWORD: volurya
+      POSTGRES_DB: volurya_db
 
 volumes:
   pgdata:

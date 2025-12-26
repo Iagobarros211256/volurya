@@ -6,6 +6,7 @@ import (
 	"api/db"
 	"api/repository"
 	"api/usecase"
+	"fmt"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -25,7 +26,7 @@ func main() {
 	userRepository := repository.NewUserRepository(dbConnection)
 
 	// ---------- USECASES ----------
-	productUseCase := usecase.NewProductUseCase(productRepository)
+	productUseCase := usecase.NewProductUsecase(productRepository)
 	authUseCase := usecase.NewAuthUsecase(userRepository)
 
 	// ---------- CONTROLLERS ----------
@@ -50,6 +51,8 @@ func main() {
 		protected.DELETE("/products/:productId", productController.Delete)
 	}
 
+	fmt.Println("Teste hot reload")
 	log.Println("API Volurya rodando na porta 8000")
 	server.Run(":8000")
+
 }
