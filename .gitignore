@@ -1,0 +1,12 @@
+# Temporary files
+tmp/
+*.log
+
+# Go build artifacts
+bin/
+*.exe
+*.out
+
+# IDE / editor
+.vscode/
+.idea/
