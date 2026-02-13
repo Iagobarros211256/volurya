@@ -1,18 +1,26 @@
-FROM golang:1.25.4
+# ---------- BUILD STAGE ----------
+FROM golang:1.25.4-alpine AS builder
 
-WORKDIR /go/src/app
+WORKDIR /app
 
-# Copiar go.mod/go.sum primeiro para cache
+# Copiar dependências primeiro (cache)
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copiar o resto do código
+# Copiar código
 COPY . .
 
-# Instalar Air
-RUN  go install github.com/air-verse/air@latest
+# Compilar binário estático
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o app
 
-EXPOSE 8000
+# ---------- FINAL STAGE ----------
+FROM alpine:latest
 
-# Rodar Air com hot reload
-CMD ["air", "-c", ".air.toml"]
+WORKDIR /app
+
+# Copiar apenas o binário
+COPY --from=builder /app/app .
+
+EXPOSE 8080
+
+CMD ["./app"]
