@@ -6,8 +6,8 @@ import (
 	"api/db"
 	"api/repository"
 	"api/usecase"
-	"fmt"
 	"log"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
@@ -51,8 +51,15 @@ func main() {
 		protected.DELETE("/products/:productId", productController.Delete)
 	}
 
-	fmt.Println("Teste hot reload")
-	log.Println("API Volurya rodando na porta 8000")
-	server.Run(":8000")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Println("API Volurya rodando na porta", port)
+
+	if err := server.Run(":" + port); err != nil {
+		log.Fatal(err)
+	}
 
 }
