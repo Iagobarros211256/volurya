@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-
+	gin.SetMode(gin.ReleaseMode)
 	server := gin.Default()
 
 	dbConnection, err := db.ConnectDB()
