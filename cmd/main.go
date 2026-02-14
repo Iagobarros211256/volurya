@@ -13,8 +13,16 @@ import (
 )
 
 func main() {
+
 	gin.SetMode(gin.ReleaseMode)
 	server := gin.Default()
+
+	server.LoadHTMLGlob("views/templates/*")
+	server.Static("/static", "./views/static")
+
+	server.GET("/", func(c *gin.Context) {
+		c.HTML(200, "index.html", gin.H{})
+	})
 
 	dbConnection, err := db.ConnectDB()
 	if err != nil {
