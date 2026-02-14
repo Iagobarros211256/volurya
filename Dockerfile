@@ -21,6 +21,8 @@ WORKDIR /app
 
 # Copiar apenas o binário
 COPY --from=builder /app/app .
+COPY --from=builder /app/views ./views
+
 
 EXPOSE 8080
 
