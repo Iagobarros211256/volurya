@@ -1,47 +1,60 @@
 // static/js/api.js
+const API_BASE = "https://volurya.onrender.com"; // backend real
 
-const API_BASE = "https://volurya.onrender.com"; // ou localhost se dev
+function getToken() {
+    return localStorage.getItem("token");
+}
 
+// GET products
 export async function getProducts(limit = 10, cursor = null) {
+    const token = getToken();
     let url = `${API_BASE}/products?limit=${limit}`;
     if (cursor) url += `&cursor=${cursor}`;
 
     const res = await fetch(url, {
-        headers: { "Content-Type": "application/json" }
+        headers: { "Authorization": `Bearer ${token}` }
     });
+    if (!res.ok) throw new Error("Failed to fetch products");
     return res.json();
 }
 
-export async function createProduct(product, token) {
+// CREATE product
+export async function createProduct(product) {
+    const token = getToken();
     const res = await fetch(`${API_BASE}/products`, {
         method: "POST",
-        headers: {
+        headers: { 
             "Content-Type": "application/json",
-            "Authorization": "Bearer " + token
+            "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify(product)
     });
+    if (!res.ok) throw new Error("Failed to create product");
     return res.json();
 }
 
-export async function updateProduct(id, product, token) {
+// UPDATE product
+export async function updateProduct(id, product) {
+    const token = getToken();
     const res = await fetch(`${API_BASE}/products/${id}`, {
         method: "PUT",
-        headers: {
+        headers: { 
             "Content-Type": "application/json",
-            "Authorization": "Bearer " + token
+            "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify(product)
     });
+    if (!res.ok) throw new Error("Failed to update product");
     return res.json();
 }
 
-export async function deleteProduct(id, token) {
+// DELETE product
+export async function deleteProduct(id) {
+    const token = getToken();
     const res = await fetch(`${API_BASE}/products/${id}`, {
         method: "DELETE",
-        headers: {
-            "Authorization": "Bearer " + token
-        }
+        headers: { "Authorization": `Bearer ${token}` }
     });
-    return res;
+    if (!res.ok) throw new Error("Failed to delete product");
+    return res.json();
 }
