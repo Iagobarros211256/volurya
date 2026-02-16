@@ -31,3 +31,20 @@ async function loadProducts() {
 
 // Carregar produtos quando a página abrir
 document.addEventListener('DOMContentLoaded', loadProducts);
+
+
+// Atualizar produto
+async function updateProduct(id, name, description, price, stock) {
+  await authFetch(`https://volurya.onrender.com/products/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ name, description, price, stock })
+  });
+}
+
+// Deletar produto
+async function deleteProduct(id) {
+  await authFetch(`https://volurya.onrender.com/products/${id}`, {
+    method: 'DELETE'
+  });
+  loadProducts(); // Atualiza lista
+}

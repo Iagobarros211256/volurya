@@ -1,0 +1,5 @@
+router := r.Group("/products")
+router.Use(middleware.JWTAuthMiddleware())
+router.POST("/", productController.CreateProduct)
+router.PUT("/:id", productController.UpdateProduct)
+router.DELETE("/:id", productController.DeleteProduct)
