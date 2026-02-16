@@ -283,17 +283,43 @@
     <div class="bg-white" id="storesection">
 
 
-        <div>
+      <div id="store-items" class="d-flex flex-wrap justify-content-center"></div>
 
-          
+        
+      <script>
+      async function loadProducts() {
+        try {
+          const response = await fetch('https://volurya.onrender.com/products?limit=10');
+          const data = await response.json();
 
-            <img src="/static/imagens/camiseta-feminina-preta.jpg" class="img-fluid">
+          const container = document.getElementById('store-items');
+          container.innerHTML = ''; // limpa antes de adicionar
 
-             
+          data.data.forEach(product => {
+            const card = document.createElement('div');
+            card.className = 'card m-2';
+            card.style.width = '200px';
+            card.innerHTML = `
+              <img src="/static/imagens/camiseta-feminina-preta.jpg" class="card-img-top">
+              <div class="card-body">
+                <h5 class="card-title">${product.name}</h5>
+                <p class="card-text">${product.description}</p>
+                <p>R$ ${product.price.toFixed(2)}</p>
+                <p>Stock: ${product.stock}</p>
+              </div>
+            `;
+            container.appendChild(card);
+          });
 
-                <h1>Black Basic Shirt Female-Volurya<br>R$ 20,00</h1>
+      } catch (error) {
+        console.error('Erro ao carregar produtos:', error);
+      }
+    }
 
-        </div>      
+          // Carrega os produtos quando a página abrir
+    loadProducts();
+    </script>
+   
 
 
     
