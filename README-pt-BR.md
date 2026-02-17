@@ -2,6 +2,13 @@ Volurya API é um laboratório pessoal para simular práticas usadas em ambiente
 
 O projeto foi desenvolvido com foco em aprendizado prático, clareza arquitetural e testes reais, não como produto comercial ativo.
 
+![Badge](https://img.shields.io/badge/Go-1.25-blue?logo=go&logoColor=white)
+![Badge](https://img.shields.io/badge/Gin-1.10-green)
+![Badge](https://img.shields.io/badge/PostgreSQL-16-blue)
+![Badge](https://img.shields.io/badge/Docker-Ready-blue)
+![Badge](https://img.shields.io/badge/JWT-Authentication-blue)
+![Badge](https://img.shields.io/badge/Clean-Architecture-blue)
+
 🎯 Objetivo do Projeto
 
 Praticar arquitetura em camadas (Clean Architecture simplificada)
