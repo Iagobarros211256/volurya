@@ -73,25 +73,16 @@ func (pr *ProductRepository) GetProducts(
 	return products, hasMore, nil
 }
 
-// create one        ?/in future whe will need a |create many| func/?
-func (pr *ProductRepository) CreateProduct(product models.Product) (int, error) {
-
+func (pr *ProductRepository) CreateProduct(product models.Product, userID int) (int, error) {
 	var id int
-	query, err := pr.connection.Prepare("INSERT INTO product" +
-		"(name, description, price, stock)" +
-		" VALUES ($1, $2, $3, $4) RETURNING id")
+	err := pr.connection.QueryRow(
+		"INSERT INTO products (user_id, name, description, price, stock) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+		userID, product.Name, product.Description, product.Price, product.Stock,
+	).Scan(&id)
+
 	if err != nil {
-		fmt.Println(err)
 		return 0, err
 	}
-
-	err = query.QueryRow(product.Name, product.Description, product.Price, product.Stock).Scan(&id)
-	if err != nil {
-		fmt.Println(err)
-		return 0, err
-	}
-
-	query.Close()
 	return id, nil
 }
 
