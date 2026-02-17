@@ -19,11 +19,29 @@ func NewAuthUsecase(userRepo repository.UserRepositoryInterface) *AuthUsecase {
 	}
 }
 
+import "strings"
+
 func (a *AuthUsecase) Signup(email, password string) error {
-	hash, err := bcrypt.GenerateFromPassword(
-		[]byte(password),
-		bcrypt.DefaultCost,
-	)
+	email = strings.TrimSpace(strings.ToLower(email))
+
+	// Validações básicas
+	if !strings.Contains(email, "@") || !strings.Contains(email, ".") {
+		return errors.New("invalid email format")
+	}
+	if len(password) < 8 {
+		return errors.New("password must be at least 8 characters")
+	}
+
+	// Checa duplicata ANTES de gerar hash
+	existing, err := a.userRepo.GetByEmail(email)
+	if err != nil {
+		return err
+	}
+	if existing != nil {
+		return errors.New("email already registered")
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
@@ -31,7 +49,7 @@ func (a *AuthUsecase) Signup(email, password string) error {
 	user := models.User{
 		Email:    email,
 		Password: string(hash),
-		Role:     "admin",
+		Role:     "user",  // default seguro – admin via seed ou painel
 	}
 
 	return a.userRepo.Create(user)

@@ -26,7 +26,7 @@ func main() {
 
 	dbConnection, err := db.ConnectDB()
 	if err != nil {
-		panic(err)
+		log.Fatalf("failed to connect to database: %v", err)
 	}
 
 	// ---------- REPOSITORIES ----------
