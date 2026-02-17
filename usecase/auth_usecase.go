@@ -5,6 +5,7 @@ import (
 	"api/models"
 	"api/repository"
 	"errors"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -18,8 +19,6 @@ func NewAuthUsecase(userRepo repository.UserRepositoryInterface) *AuthUsecase {
 		userRepo: userRepo,
 	}
 }
-
-import "strings"
 
 func (a *AuthUsecase) Signup(email, password string) error {
 	email = strings.TrimSpace(strings.ToLower(email))
@@ -49,7 +48,7 @@ func (a *AuthUsecase) Signup(email, password string) error {
 	user := models.User{
 		Email:    email,
 		Password: string(hash),
-		Role:     "user",  // default seguro – admin via seed ou painel
+		Role:     "user", // default seguro – admin via seed ou painel
 	}
 
 	return a.userRepo.Create(user)
