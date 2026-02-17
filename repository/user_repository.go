@@ -3,6 +3,9 @@ package repository
 import (
 	"api/models"
 	"database/sql"
+	"errors"
+
+	"github.com/lib/pq"
 )
 
 type UserRepository struct {
@@ -36,12 +39,22 @@ func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
 	return &user, nil
 }
 
-func (r *UserRepository) Create(user models.User) error {
-	_, err := r.db.Exec(
-		"INSERT INTO users (email, password, role) VALUES ($1, $2, $3)",
+func (r *UserRepository) Create(user models.User) (int, error) {
+	var id int
+	err := r.db.QueryRow(
+		"INSERT INTO users (email, password, role) VALUES ($1, $2, $3) RETURNING id",
 		user.Email,
 		user.Password,
 		user.Role,
-	)
-	return err
+	).Scan(&id)
+
+	if err != nil {
+		var pgErr *pq.Error
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" { // unique violation
+			return 0, errors.New("email already registered")
+		}
+		return 0, err
+	}
+
+	return id, nil
 }
