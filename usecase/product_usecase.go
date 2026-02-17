@@ -63,7 +63,7 @@ func (pu *ProductUsecase) GetProducts(limitStr string, cursorStr string) ([]mode
 
 func (pu *ProductUsecase) CreateProduct(userID int, product models.Product) (models.Product, error) {
 
-	productId, err := pu.repository.CreateProduct(product)
+	productId, err := pu.repository.CreateProduct(product, userID)
 	if err != nil {
 		return models.Product{}, err
 	}
