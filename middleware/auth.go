@@ -1,6 +1,10 @@
 package middleware
 
-import "github.com/gin-gonic/gin"
+import (
+	"api/auth"
+
+	"github.com/gin-gonic/gin"
+)
 
 // middleware/auth.go
 func JWTAuthMiddleware() gin.HandlerFunc {
@@ -12,7 +16,7 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		claims, err := auth.ParseToken(tokenString)
+		claims, err := auth.ValidateToken(tokenString)
 		if err != nil {
 			c.JSON(401, gin.H{"error": "invalid token"})
 			c.Abort()
