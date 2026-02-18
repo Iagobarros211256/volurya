@@ -89,7 +89,7 @@ func (pr *ProductRepository) CreateProduct(product models.Product, userID int) (
 // get one by id
 func (pr *ProductRepository) GetProductById(id_product int) (*models.Product, error) {
 
-	query, err := pr.connection.Prepare("SELECT * FROM product WHERE id = $1")
+	query, err := pr.connection.Prepare("SELECT * FROM products WHERE id = $1")
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -120,7 +120,7 @@ func (pr *ProductRepository) GetProductById(id_product int) (*models.Product, er
 // update one        /? in future we will need a update many?/
 func (pr *ProductRepository) UpdateProduct(id_product int, Name string, Description string, Price float64, Stock int) (*models.Product, error) {
 
-	query, err := pr.connection.Prepare("UPDATE product SET name = $1, description = $2, price = $3, stock = $4 WHERE id = $5 RETURNING id, name, description, price, stock;")
+	query, err := pr.connection.Prepare("UPDATE products SET name = $1, description = $2, price = $3, stock = $4 WHERE id = $5 RETURNING id, name, description, price, stock;")
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -150,7 +150,7 @@ func (pr *ProductRepository) UpdateProduct(id_product int, Name string, Descript
 
 // delete one
 func (pr *ProductRepository) Delete(id int) error {
-	query := `DELETE FROM product WHERE id = $1 RETURNING id`
+	query := `DELETE FROM products WHERE id = $1 RETURNING id`
 
 	var deletedID int
 	err := pr.connection.

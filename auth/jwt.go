@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"log"
 	"os"
 	"time"
@@ -43,25 +44,24 @@ func GenerateToken(userID int, role string, duration time.Duration) (string, err
 	return token.SignedString(secret)
 }
 
-// see  if a token is valid
 func ValidateToken(tokenString string) (*Claims, error) {
-
-	token, err := jwt.ParseWithClaims(
-		tokenString,
-		&Claims{},
-		func(token *jwt.Token) (interface{}, error) {
-			return secret, nil
-		},
-	)
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+		return secret, nil
+	})
 
 	if err != nil {
+		log.Printf("JWT parse failed: %v", err)
 		return nil, err
 	}
 
-	claims, ok := token.Claims.(*Claims)
-	if !ok || !token.Valid {
-		return nil, jwt.ErrTokenInvalidClaims
+	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
+		log.Printf("JWT valid - user_id: %d, role: %s", claims.UserID, claims.Role)
+		return claims, nil
 	}
 
-	return claims, nil
+	log.Printf("JWT invalid claims or expired")
+	return nil, errors.New("token invalid or expired")
 }
