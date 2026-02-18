@@ -29,6 +29,10 @@ func main() {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
 
+	if err := db.EnsureTablesExist(dbConnection); err != nil {
+		log.Fatalf("failed to ensure tables exist: %v", err)
+	}
+
 	// ---------- REPOSITORIES ----------
 	productRepository := repository.NewProductRepository(dbConnection)
 	userRepository := repository.NewUserRepository(dbConnection)
