@@ -18,7 +18,7 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 
 type UserRepositoryInterface interface {
 	GetByEmail(email string) (*models.User, error)
-	Create(user models.User) error
+	Create(user models.User) (int, error)
 }
 
 func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
