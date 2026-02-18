@@ -2,6 +2,7 @@ package controller
 
 import (
 	"api/usecase"
+	"errors"
 
 	"github.com/gin-gonic/gin"
 )
@@ -50,13 +51,18 @@ func (a *AuthController) Signup(ctx *gin.Context) {
 		return
 	}
 
-	err := a.authUsecase.Signup(body.Email, body.Password)
+	token, err := a.authUsecase.Signup(body.Email, body.Password)
 	if err != nil {
+		if errors.Is(err, usecase.ErrEmailAlreadyExists) { // ajuste o erro exato
+			ctx.JSON(409, gin.H{"error": "email already registered"})
+			return
+		}
 		ctx.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 
 	ctx.JSON(201, gin.H{
-		"message": "user created",
+		"message":      "user created",
+		"access_token": token,
 	})
 }
