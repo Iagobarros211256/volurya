@@ -15,6 +15,7 @@ type Claims struct {
 }
 
 // create a token
+
 func GenerateToken(userID int, role string, duration time.Duration) (string, error) {
 	claims := Claims{
 		UserID: userID,
@@ -23,7 +24,8 @@ func GenerateToken(userID int, role string, duration time.Duration) (string, err
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
-			// Issuer, Audience, etc. se quiser
+			// Opcional: Issuer: "volurya-api",
+			// Opcional: Audience: jwt.ClaimStrings{"api"},
 		},
 	}
 
