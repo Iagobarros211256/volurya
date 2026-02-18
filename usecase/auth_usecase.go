@@ -81,5 +81,5 @@ func (a *AuthUsecase) Login(email, password string) (string, error) {
 		return "", errors.New("invalid credentials")
 	}
 
-	return auth.GenerateToken(user.ID, user.Role)
+	return auth.GenerateToken(user.ID, user.Role, 24*time.Hour) // ou 1*time.Hour pra teste
 }
