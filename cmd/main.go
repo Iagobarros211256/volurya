@@ -42,14 +42,16 @@ func main() {
 	authController := controller.NewAuthController(authUseCase)
 
 	// ---------- ROTAS PÚBLICAS ----------
-	server.GET("/ping", func(ctx *gin.Context) {
-		ctx.JSON(200, gin.H{"message": "pong"})
-	})
-	server.POST("/signup", authController.Signup)
-	server.POST("/login", authController.Login)
-
+	public := server.Group("/api")
+	{
+		public.GET("/ping", func(ctx *gin.Context) {
+			ctx.JSON(200, gin.H{"message": "pong"})
+		})
+		public.POST("/signup", authController.Signup)
+		public.POST("/login", authController.Login)
+	}
 	// ---------- ROTAS PROTEGIDAS ----------
-	protected := server.Group("/")
+	protected := server.Group("/api")
 	protected.Use(auth.Middleware())
 	{
 		protected.GET("/products", productController.GetProducts)
