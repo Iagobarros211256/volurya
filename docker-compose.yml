@@ -24,6 +24,8 @@ services:
     volumes:
       - ./:/go/src/app   # monta o código do host
     environment:
+      JWT_SECRET: volurya-secret-key-super-forte-aqui  
+    
       POSTGRES_HOST: volurya_postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: volurya

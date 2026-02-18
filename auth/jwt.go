@@ -1,12 +1,22 @@
 package auth
 
 import (
+	"log"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var secret = []byte("volurya-secret-key")
+var secret []byte
+
+func init() {
+	secretStr := os.Getenv("JWT_SECRET")
+	if secretStr == "" {
+		log.Fatal("JWT_SECRET environment variable is required")
+	}
+	secret = []byte(secretStr)
+}
 
 type Claims struct {
 	UserID int    `json:"user_id"`
