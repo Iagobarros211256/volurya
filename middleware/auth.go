@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"api/auth"
+	"log"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,7 +18,8 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 
 		claims, err := auth.ValidateToken(tokenString)
 		if err != nil {
-			c.JSON(401, gin.H{"error": "invalid token"})
+			log.Printf("JWT validation failed: %v - token: %s", err, tokenString)
+			c.JSON(401, gin.H{"error": "invalid token - " + err.Error()})
 			c.Abort()
 			return
 		}
