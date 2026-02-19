@@ -7,14 +7,12 @@ import (
 	"strconv"
 )
 
-type ProductUsecase struct {
-	repository repository.ProductRepository
+func NewProductUsecase(repo *repository.ProductRepository) *ProductUsecase {
+	return &ProductUsecase{repo: repo}
 }
 
-func NewProductUsecase(repo repository.ProductRepository) *ProductUsecase {
-	return &ProductUsecase{
-		repository: repo,
-	}
+type ProductUsecase struct {
+	repo *repository.ProductRepository // ← pointer aqui também
 }
 
 func (pu *ProductUsecase) GetProducts(limitStr string, cursorStr string) ([]models.Product, *int, bool, error) {
@@ -47,7 +45,7 @@ func (pu *ProductUsecase) GetProducts(limitStr string, cursorStr string) ([]mode
 	}
 
 	products, hasMore, err :=
-		pu.repository.GetProducts(limit, cursor)
+		pu.repo.GetProducts(limit, cursor) // ← mudou de repository para repo
 	if err != nil {
 		return nil, nil, false, err
 	}
@@ -63,19 +61,19 @@ func (pu *ProductUsecase) GetProducts(limitStr string, cursorStr string) ([]mode
 
 func (pu *ProductUsecase) CreateProduct(userID int, product models.Product) (models.Product, error) {
 
-	productId, err := pu.repository.CreateProduct(product, userID)
+	productId, err := pu.repo.CreateProduct(product, userID) // ← mudou para repo
 	if err != nil {
 		return models.Product{}, err
 	}
 
 	product.ID = productId
-
+	product.UserID = userID
 	return product, nil
 }
 
 func (pu *ProductUsecase) GetProductById(id_product int) (*models.Product, error) {
 
-	product, err := pu.repository.GetProductById(id_product)
+	product, err := pu.repo.GetProductById(id_product) // ← mudou para repo
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +91,7 @@ func (pu *ProductUsecase) UpdateProduct(id_product int, Name string, Description
 		return nil, errors.New("stock cannot be negative")
 	}
 
-	product, err := pu.repository.UpdateProduct(id_product, Name, Description, Price, Stock)
+	product, err := pu.repo.UpdateProduct(id_product, Name, Description, Price, Stock) // ← mudou para repo
 	if err != nil {
 		return nil, err
 	}
@@ -101,37 +99,12 @@ func (pu *ProductUsecase) UpdateProduct(id_product int, Name string, Description
 	return product, nil
 }
 
-//// provavelmete esse sistema VAI crescer.
-// se prescisarmos de regras mais robustas isso podera ser adicionando
-//func (pu *ProductUsecase) Delete(id int) (*models.Product, error) {
-
-// 1. verificar existência
-
-//product, err := pu.repository.GetProductById(id)
-//if err != nil {
-//	return nil, err
-//}
-
-// verificar se o produto tem estoque. se tiver nao podera ser deletado
-//if product.Stock > 0 {
-//	return nil, errors.New("cannot delete product with stock")
-//}
-
-// 3. deletar de fato
-//err = pu.repository.Delete(id)
-//if err != nil {
-//	return nil, err
-//}
-
-// 4. retornar o que foi deletado (opcional)
-//return product, nil
-
 // delete one
 func (pu *ProductUsecase) Delete(userID int, productID int) error {
 	// regra de negócio (exemplo)
 	// só admin ou dono pode deletar
 
-	product, err := pu.repository.GetProductById(productID)
+	product, err := pu.repo.GetProductById(productID) // ← mudou para repo
 	if err != nil {
 		return err
 	}
@@ -145,5 +118,5 @@ func (pu *ProductUsecase) Delete(userID int, productID int) error {
 	//     return errors.New("forbidden")
 	// }
 
-	return pu.repository.Delete(productID)
+	return pu.repo.Delete(productID) // ← mudou para repo
 }
