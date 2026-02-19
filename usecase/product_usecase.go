@@ -101,10 +101,7 @@ func (pu *ProductUsecase) UpdateProduct(id_product int, Name string, Description
 
 // delete one
 func (pu *ProductUsecase) Delete(userID int, productID int) error {
-	// regra de negócio (exemplo)
-	// só admin ou dono pode deletar
-
-	product, err := pu.repo.GetProductById(productID) // ← mudou para repo
+	product, err := pu.repo.GetProductById(productID)
 	if err != nil {
 		return err
 	}
@@ -113,10 +110,13 @@ func (pu *ProductUsecase) Delete(userID int, productID int) error {
 		return errors.New("product not found")
 	}
 
-	// regra futura
-	// if product.OwnerID != userID {
-	//     return errors.New("forbidden")
-	// }
+	// Checagem de ownership
+	if product.UserID != userID {
+		return errors.New("forbidden: you do not own this product")
+	}
 
-	return pu.repo.Delete(productID) // ← mudou para repo
+	// Regra futura para admin (opcional)
+	// if userRole == "admin" { ok }
+
+	return pu.repo.Delete(productID)
 }
