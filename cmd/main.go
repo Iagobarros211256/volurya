@@ -24,6 +24,28 @@ func main() {
 		c.HTML(200, "index.html", gin.H{})
 	})
 
+	// Login
+	server.GET("/login", func(c *gin.Context) {
+		c.HTML(200, "login.html", gin.H{})
+	})
+
+	// Cadastro
+	server.GET("/signup", func(c *gin.Context) {
+		c.HTML(200, "signup.html", gin.H{})
+	})
+
+	// Loja pública (visualização de produtos)
+	server.GET("/store", func(c *gin.Context) {
+		c.HTML(200, "store.html", gin.H{})
+	})
+
+	// Painel admin (lista e gerenciamento de produtos)
+	server.GET("/admin", func(c *gin.Context) {
+		// Aqui você pode adicionar middleware de autenticação no futuro
+		// Por enquanto só renderiza
+		c.HTML(200, "admin.html", gin.H{}) // ou "products.html", dependendo do nome que você deu
+	})
+
 	dbConnection, err := db.ConnectDB()
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
