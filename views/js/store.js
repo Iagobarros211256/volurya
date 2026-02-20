@@ -1,50 +1,47 @@
-// js/store.js
+// static/js/store.js (atualizado)
 
-async function loadProducts() {
+document.addEventListener('DOMContentLoaded', async () => {
+  const container = document.getElementById('store-items');
+  const loading = document.getElementById('loading');
+
   try {
-    const response = await fetch('https://volurya.onrender.com/products?limit=10');
-    const data = await response.json();
+    loading.style.display = 'block';
 
-    const container = document.getElementById('store-items');
-    container.innerHTML = ''; // limpa antes de adicionar
+    const res = await fetch(`${API_BASE}/products?limit=12`);
+    if (!res.ok) throw new Error('Erro ao carregar produtos');
 
-    data.data.forEach(product => {
-      const card = document.createElement('div');
-      card.className = 'card m-2';
-      card.style.width = '200px';
-      card.innerHTML = `
-        <img src="/static/imagens/camiseta-feminina-preta.jpg" class="card-img-top">
-        <div class="card-body">
-          <h5 class="card-title">${product.name}</h5>
-          <p class="card-text">${product.description}</p>
-          <p>R$ ${product.price.toFixed(2)}</p>
-          <p>Stock: ${product.stock}</p>
-        </div>
-      `;
-      container.appendChild(card);
-    });
+    const { data } = await res.json();
 
-  } catch (error) {
-    console.error('Erro ao carregar produtos:', error);
+    container.innerHTML = '';
+
+    if (data.length === 0) {
+      container.innerHTML = '<p class="col-12 text-center text-muted fs-4">Nenhum produto disponível no momento. Volte em breve!</p>';
+    } else {
+      data.forEach(product => {
+        const col = document.createElement('div');
+        col.className = 'col';
+        col.innerHTML = `
+          <div class="card bg-dark border-danger h-100 shadow-lg hover-glow">
+            <img src="/static/imagens/camiseta-feminina-preta.jpg" class="card-img-top" alt="${product.name}">
+            <div class="card-body d-flex flex-column">
+              <h5 class="card-title text-danger">${product.name}</h5>
+              <p class="card-text flex-grow-1">${product.description || 'Produto oficial VOLURYA'}</p>
+              <div class="mt-auto">
+                <p class="card-text fw-bold fs-4 text-success">R$ ${product.price.toFixed(2)}</p>
+                <p class="card-text text-muted small">Estoque: ${product.stock}</p>
+                <button class="btn btn-outline-danger w-100 buy-btn" data-id="${product.id}">
+                  Comprar
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        container.appendChild(col);
+      });
+    }
+  } catch (err) {
+    container.innerHTML = `<p class="col-12 text-center text-danger fs-4">Erro ao carregar produtos: ${err.message}</p>`;
+  } finally {
+    loading.style.display = 'none';
   }
-}
-
-// Carregar produtos quando a página abrir
-document.addEventListener('DOMContentLoaded', loadProducts);
-
-
-// Atualizar produto
-async function updateProduct(id, name, description, price, stock) {
-  await authFetch(`https://volurya.onrender.com/products/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify({ name, description, price, stock })
-  });
-}
-
-// Deletar produto
-async function deleteProduct(id) {
-  await authFetch(`https://volurya.onrender.com/products/${id}`, {
-    method: 'DELETE'
-  });
-  loadProducts(); // Atualiza lista
-}
+});
