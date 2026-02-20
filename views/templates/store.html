@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Loja VOLURYA - Produtos Oficiais</title>
-  
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Russo+One&display=swap">
@@ -12,7 +12,7 @@
 </head>
 <body class="bg-dark text-center text-light">
 
-  <!-- Navbar (igual ao index) -->
+  <!-- Navbar (igual ao index, com Store ativo) -->
   <nav class="navbar navbar-dark bg-dark">
     <div class="container-fluid">
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample01" aria-controls="navbarsExample01" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,7 +35,7 @@
   <section class="hero d-flex justify-content-center align-items-center bg-dark py-5">
     <div class="text-center">
       <h1 class="display-3 text-danger mb-0" style="font-family: 'Russo One', sans-serif; text-shadow: 0 0 15px #ff0000;">
-          VOLURYA  STORE
+        LOJA VOLURYA
       </h1>
       <p class="lead text-light mt-2">Mercadoria oficial da banda mais pesada do Nordeste</p>
     </div>
@@ -43,20 +43,21 @@
 
   <!-- Produtos -->
   <div class="container py-5">
-    <div id="store-items" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4">
-      <!-- Cards serão inseridos aqui via JS -->
-    </div>
-
-    <!-- Mensagem de carregamento / vazio -->
     <div id="loading" class="text-center my-5">
-      <div class="spinner-border text-danger" role="status">
+      <div class="spinner-border text-danger" role="status" style="width: 4rem; height: 4rem;">
         <span class="visually-hidden">Carregando produtos...</span>
       </div>
-      <p class="mt-3 text-muted">Carregando produtos oficiais...</p>
+      <p class="mt-3 text-muted fs-4">Carregando produtos oficiais...</p>
+    </div>
+
+    <div id="store-items" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4"></div>
+
+    <div id="no-products" class="text-center my-5 d-none">
+      <p class="fs-4 text-muted">Nenhum produto disponível no momento.<br>Volte em breve!</p>
     </div>
   </div>
 
-  <!-- Footer social (igual ao index) -->
+  <!-- Footer social -->
   <div class="bg-dark py-4" id="socialsection">
     <div class="container">
       <a href="#" class="fa fa-facebook mx-2"></a>
