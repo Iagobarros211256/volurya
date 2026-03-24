@@ -58,14 +58,17 @@ func main() {
 	// ---------- REPOSITORIES ----------
 	productRepository := repository.NewProductRepository(dbConnection)
 	userRepository := repository.NewUserRepository(dbConnection)
+	orderRepository := repository.NewOrderRepository(dbConnection)
 
 	// ---------- USECASES ----------
 	productUseCase := usecase.NewProductUsecase(productRepository)
 	authUseCase := usecase.NewAuthUsecase(userRepository)
+	orderUsecase := usecase.NewOrderUsecase(orderRepository)
 
 	// ---------- CONTROLLERS ----------
 	productController := controller.NewProductController(productUseCase)
 	authController := controller.NewAuthController(authUseCase)
+	orderController := controller.NewOrderController(orderUsecase)
 
 	// ---------- ROTAS PÚBLICAS ----------
 	public := server.Group("/api")
@@ -78,6 +81,7 @@ func main() {
 	}
 	// ---------- ROTAS PROTEGIDAS ----------
 	protected := server.Group("/api")
+	protected.POST("/orders", orderController.CreateOrder)
 	protected.Use(auth.Middleware())
 	{
 		protected.GET("/products", productController.GetProducts)

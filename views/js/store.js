@@ -65,3 +65,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     loading.style.display = 'none';
   }
 });
+
+// ... (restante do store.js)
+
+document.querySelectorAll('.buy-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const id = btn.dataset.id;
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        body: JSON.stringify({ product_id: id, quantity: 1 })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        window.location.href = data.payment_url;  // link do PagSeguro
+      } else {
+        showToast(data.error, 'danger');
+      }
+    } catch (err) {
+      showToast(err.message, 'danger');
+    }
+  });
+});
