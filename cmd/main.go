@@ -63,7 +63,7 @@ func main() {
 	// ---------- USECASES ----------
 	productUseCase := usecase.NewProductUsecase(productRepository)
 	authUseCase := usecase.NewAuthUsecase(userRepository)
-	orderUsecase := usecase.NewOrderUsecase(orderRepository)
+	orderUsecase := usecase.NewOrderUsecase(orderRepository, productRepository)
 
 	// ---------- CONTROLLERS ----------
 	productController := controller.NewProductController(productUseCase)
@@ -89,6 +89,7 @@ func main() {
 		protected.GET("/products/:productId", productController.GetProductById)
 		protected.PUT("/products/:productId", productController.UpdateProduct)
 		protected.DELETE("/products/:productId", productController.Delete)
+		protected.POST("/orders", orderController.CreateOrder)
 	}
 
 	port := os.Getenv("PORT")

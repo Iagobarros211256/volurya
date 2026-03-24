@@ -1,68 +1,123 @@
 package usecase
 
 import (
-  "api/models"
-  "api/repository"
-  "github.com/WalterPaes/go-pagseguro"
-  "os"
+	"api/models"
+	"api/repository"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
 )
 
 type OrderUsecase struct {
-  repo *repository.OrderRepository
+	orderRepo   *repository.OrderRepository
+	productRepo *repository.ProductRepository
 }
 
-func NewOrderUsecase(repo *repository.OrderRepository) *OrderUsecase {
-  return &OrderUsecase{repo: repo}
+func NewOrderUsecase(orderRepo *repository.OrderRepository, productRepo *repository.ProductRepository) *OrderUsecase {
+	return &OrderUsecase{
+		orderRepo:   orderRepo,
+		productRepo: productRepo,
+	}
+}
+
+type PagSeguroChargeRequest struct {
+	ReferenceID string `json:"reference_id"`
+	Description string `json:"description"`
+	Amount      struct {
+		Value    int    `json:"value"`
+		Currency string `json:"currency"`
+	} `json:"amount"`
+	PaymentMethod struct {
+		Type string `json:"type"`
+	} `json:"payment_method"`
+	NotificationURL string `json:"notification_url"`
+}
+
+type PagSeguroChargeResponse struct {
+	ID          string `json:"id"`
+	PaymentLink string `json:"payment_link"`
+	Status      string `json:"status"`
 }
 
 func (ou *OrderUsecase) CreateOrder(userID int, productID int, quantity int) (string, error) {
-  // Pegue produto
-  product, err := ou.repo.GetProductById(productID)
-  if err != nil {
-    return "", err
-  }
+	// Busca o produto usando o ProductRepository
+	product, err := ou.productRepo.GetProductById(productID)
+	if err != nil {
+		return "", fmt.Errorf("produto não encontrado: %w", err)
+	}
 
-  // Crie ordem no banco
-  order := models.Order{
-    UserID: userID,
-    ProductID: productID,
-    Quantity: quantity,
-    Total: product.Price * float64(quantity),
-    Status: "pending",
-  }
-  orderID, err := ou.repo.CreateOrder(order)
-  if err != nil {
-    return "", err
-  }
+	// Cria a ordem no banco
+	order := models.Order{
+		UserID:    userID,
+		ProductID: productID,
+		Quantity:  quantity,
+		Total:     product.Price * float64(quantity),
+		Status:    "pending",
+	}
 
-  // Integre com PagSeguro
-  config := pagseguro.Config{
-    Url: "https://sandbox.api.pagseguro.com" if os.Getenv("PAGSEGURO_SANDBOX") == "true" else "https://api.pagseguro.com",
-    Token: os.Getenv("PAGSEGURO_TOKEN"),
-    Email: os.Getenv("PAGSEGURO_EMAIL"),
-  }
-  client := pagseguro.NewClient(config)
+	orderID, err := ou.orderRepo.CreateOrder(order)
+	if err != nil {
+		return "", fmt.Errorf("falha ao criar ordem: %w", err)
+	}
 
-  charge := pagseguro.Charge{
-    ReferenceID: fmt.Sprintf("ORDER-%d", orderID),
-    Description: "Compra Volurya",
-    Amount: pagseguro.Amount{
-      Value: int(order.Total * 100),  // em centavos
-      Currency: "BRL",
-    },
-    PaymentMethod: pagseguro.PaymentMethod{
-      Type: "CREDIT_CARD",  // ou PIX, BOLETO
-    },
-    NotificationUrls: []string{os.Getenv("PAGSEGURO_WEBHOOK_URL")},
-  }
+	// Configuração PagSeguro
+	isSandbox := os.Getenv("PAGSEGURO_SANDBOX") != "false"
+	baseURL := "https://sandbox.api.pagseguro.com"
+	if !isSandbox {
+		baseURL = "https://api.pagseguro.com"
+	}
 
-  chargeRes, err := client.Charges.Create(charge)
-  if err != nil {
-    return "", err
-  }
+	payload := PagSeguroChargeRequest{
+		ReferenceID: fmt.Sprintf("ORDER-%d", orderID),
+		Description: fmt.Sprintf("Compra Volurya - Produto %d", productID),
+		Amount: struct {
+			Value    int    `json:"value"`
+			Currency string `json:"currency"`
+		}{
+			Value:    int(order.Total * 100), // centavos
+			Currency: "BRL",
+		},
+		PaymentMethod: struct {
+			Type string `json:"type"`
+		}{
+			Type: "PIX",
+		},
+		NotificationURL: os.Getenv("PAGSEGURO_WEBHOOK_URL"),
+	}
 
-  // Atualize ordem no banco com charge ID
-  ou.repo.UpdateOrderChargeID(orderID, chargeRes.ID)
+	jsonPayload, _ := json.Marshal(payload)
 
-  return chargeRes.PaymentLinks[0].Href, nil  // link pra pagar
+	req, err := http.NewRequest("POST", baseURL+"/charges", bytes.NewBuffer(jsonPayload))
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("PAGSEGURO_TOKEN"))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("falha ao chamar PagSeguro: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		return "", fmt.Errorf("PagSeguro retornou status %d", resp.StatusCode)
+	}
+
+	var chargeResp PagSeguroChargeResponse
+	if err := json.NewDecoder(resp.Body).Decode(&chargeResp); err != nil {
+		return "", err
+	}
+
+	// Atualiza a ordem com o ID da cobrança
+	err = ou.orderRepo.UpdateOrderChargeID(orderID, chargeResp.ID)
+	if err != nil {
+		return "", fmt.Errorf("falha ao atualizar ordem: %w", err)
+	}
+
+	return chargeResp.PaymentLink, nil
 }
