@@ -18,44 +18,10 @@ var (
 )
 
 func ConnectDB() (*sql.DB, error) {
-	var dsn string
-
-	// Produção / Cloud (Render, etc.)
-	if url := os.Getenv("DATABASE_URL"); url != "" {
-		dsn = url
-	} else {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
 		log.Println("DATABASE_URL not set — using fallback")
-
-		// Dev / Local fallback
-		host := os.Getenv("POSTGRES_HOST")
-		if host == "" {
-			host = "localhost"
-		}
-		port := os.Getenv("POSTGRES_PORT")
-		if port == "" {
-			port = "5432"
-		}
-		user := os.Getenv("POSTGRES_USER")
-		if user == "" {
-			user = "postgres"
-		}
-		password := os.Getenv("POSTGRES_PASSWORD")
-		if password == "" {
-			password = "postgres"
-		}
-		dbname := os.Getenv("POSTGRES_DB")
-		if dbname == "" {
-			dbname = "volurya_db"
-		}
-		sslmode := os.Getenv("POSTGRES_SSLMODE")
-		if sslmode == "" {
-			sslmode = "disable"
-		}
-
-		dsn = fmt.Sprintf(
-			"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-			host, port, user, password, dbname, sslmode,
-		)
+		dsn = buildFallbackDSN()
 	}
 
 	if dsn == "" {
@@ -67,30 +33,49 @@ func ConnectDB() (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to open connection: %w", err)
 	}
 
-	// Pool config (já tinha)
-	db.SetMaxOpenConns(25)
+	// Configurações de pool
+	db.SetMaxOpenConns(20)
 	db.SetMaxIdleConns(10)
-	db.SetConnMaxLifetime(5 * time.Minute)
-	db.SetConnMaxIdleTime(1 * time.Minute)
+	db.SetConnMaxLifetime(10 * time.Minute)
+	db.SetConnMaxIdleTime(5 * time.Minute)
 
-	// Retry no ping (já tinha, mas confirme)
-	const maxRetries = 5
+	// Retry mais agressivo para Render
+	const maxRetries = 15
 	for i := 1; i <= maxRetries; i++ {
 		err = db.Ping()
 		if err == nil {
-			log.Printf("Database connected successfully (DSN: %s)", maskDSN(dsn))
+			log.Printf("Database connected successfully")
 			return db, nil
 		}
 
 		log.Printf("Ping attempt %d/%d failed: %v", i, maxRetries, err)
-		time.Sleep(time.Second * time.Duration(i))
+
+		sleepTime := time.Duration(i+1) * time.Second
+		if sleepTime > 10*time.Second {
+			sleepTime = 10 * time.Second
+		}
+		time.Sleep(sleepTime)
 	}
 
 	db.Close()
 	return nil, fmt.Errorf("%w after %d attempts: %v", ErrConnectionFailed, maxRetries, err)
 }
 
-// maskDSN pra não logar senha (opcional, mas bom)
+func buildFallbackDSN() string {
+	host := getEnv("POSTGRES_HOST", "localhost")
+	port := getEnv("POSTGRES_PORT", "5432")
+	user := getEnv("POSTGRES_USER", "postgres")
+	password := getEnv("POSTGRES_PASSWORD", "postgres")
+	dbname := getEnv("POSTGRES_DB", "volurya_db")
+	sslmode := getEnv("POSTGRES_SSLMODE", "disable")
+
+	return fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+		host, port, user, password, dbname, sslmode,
+	)
+}
+
+// maskDSN para não logar senha
 func maskDSN(dsn string) string {
 	if idx := strings.Index(dsn, "password="); idx != -1 {
 		end := strings.Index(dsn[idx:], " ")
