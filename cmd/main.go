@@ -24,6 +24,10 @@ func main() {
 		c.HTML(200, "index.html", gin.H{})
 	})
 
+	server.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok"})
+	})
+
 	// Login
 	server.GET("/login", func(c *gin.Context) {
 		c.HTML(200, "login.html", gin.H{})
