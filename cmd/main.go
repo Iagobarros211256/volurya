@@ -71,25 +71,26 @@ func main() {
 	orderController := controller.NewOrderController(orderUsecase)
 
 	// ---------- ROTAS PÚBLICAS ----------
-	public := server.Group("/api")
+	api := server.Group("/api")
 	{
-		public.GET("/ping", func(ctx *gin.Context) {
+		api.GET("/ping", func(ctx *gin.Context) {
 			ctx.JSON(200, gin.H{"message": "pong"})
 		})
-		public.POST("/signup", authController.Signup)
-		public.POST("/login", authController.Login)
+		api.POST("/signup", authController.Signup)
+		api.POST("/login", authController.Login)
 	}
 	// ---------- ROTAS PROTEGIDAS ----------
 	protected := server.Group("/api")
-	protected.POST("/orders", orderController.CreateOrder)
+
 	protected.Use(auth.Middleware())
 	{
+		protected.POST("/orders", orderController.CreateOrder)
 		protected.GET("/products", productController.GetProducts)
 		protected.POST("/products", productController.CreateProduct)
 		protected.GET("/products/:productId", productController.GetProductById)
 		protected.PUT("/products/:productId", productController.UpdateProduct)
 		protected.DELETE("/products/:productId", productController.Delete)
-		protected.POST("/orders", orderController.CreateOrder)
+
 	}
 
 	port := os.Getenv("PORT")
