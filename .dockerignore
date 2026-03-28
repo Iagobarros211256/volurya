@@ -1,0 +1,56 @@
+# Git
+.git
+.gitignore
+
+# Node / frontend (se existir)
+node_modules
+npm-debug.log
+yarn.lock
+package-lock.json
+
+# Build artifacts
+bin/
+build/
+dist/
+tmp/
+out/
+
+# Logs
+*.log
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+
+# Env
+.env
+.env.*
+
+# Docker
+Dockerfile
+docker-compose.yml
+
+# Testes
+*.test
+coverage.out
+
+# Go cache (às vezes aparece no repo sem querer)
+pkg/
+vendor/ (remova isso se você estiver usando vendor propositalmente)
+
+# Arquivos grandes (ajuste se tiver)
+*.zip
+*.tar
+*.tar.gz
+*.mp4
+*.mov
+*.png
+*.jpg
+*.jpeg
+
+# EXCEÇÕES (importante!)
+!views/
