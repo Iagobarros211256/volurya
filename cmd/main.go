@@ -29,6 +29,25 @@ func main() {
 		c.HTML(200, "index.html", gin.H{})
 	})
 
+	router.GET("/store", func(c *gin.Context) {
+		c.HTML(200, "store.html", gin.H{
+			"title": "VOLURYA SHOP - Produtos Oficiais",
+		})
+	})
+
+	router.GET("/login", func(c *gin.Context) {
+		c.HTML(200, "login.html", gin.H{})
+	})
+
+	router.GET("/signup", func(c *gin.Context) {
+		c.HTML(200, "signup.html", gin.H{})
+	})
+
+	// Ping de saúde
+	router.GET("/ping", func(c *gin.Context) {
+		c.JSON(200, gin.H{"message": "pong"})
+	})
+
 	router.HEAD("/", func(c *gin.Context) {
 		c.Status(200)
 	})
@@ -57,10 +76,6 @@ func main() {
 	// Rotas
 	api := router.Group("/api")
 	{
-		api.GET("/ping", func(c *gin.Context) {
-			c.JSON(200, gin.H{"message": "pong"})
-		})
-
 		api.POST("/signup", authController.Signup)
 		api.POST("/login", authController.Login)
 	}
@@ -71,6 +86,9 @@ func main() {
 		protected.GET("/products", productController.GetProducts)
 		protected.POST("/products", productController.CreateProduct)
 		protected.POST("/orders", orderController.CreateOrder)
+		protected.GET("/products/:productId", productController.GetProductById)
+		protected.PUT("/products/:productId", productController.UpdateProduct)
+		protected.DELETE("/products/:productId", productController.Delete)
 	}
 
 	// Porta
