@@ -45,38 +45,44 @@ git clone https://github.com/Iagobarros211256/volurya.git
 cd volurya
 
 
-Start services
+Start services:
 
-Bashdocker compose up --build -d
+Bash    docker compose up --build -d
 API available at: http://localhost:8000
 
-Stop everything
+Stop everything:
 
-Bashdocker compose down -v
+Bash    docker compose down -v
+
+
 🗄️ Database Access (Local)
-Bashdocker exec -it volurya_postgres psql -U volurya -d volurya_db
+Bash     docker exec -it volurya_postgres psql -U volurya -d volurya_db
 Quick checks:
 SQL\dt                  # list tables
-SELECT * FROM users; # see users
+SELECT * FROM user; # see users
 SELECT * FROM products;
+
+
+
 🔐 Authentication Flow (JWT)
 
-Signup (creates normal user – role: "user")
+Signup : (creates normal user – role: "user")
 
-Bashcurl -X POST https://volurya.onrender.com/api/signup \
+Bash  curl -X POST https://volurya.onrender.com/api/signup \
   -H "Content-Type: application/json" \
   -d '{"email": "fan@volurya.com", "password": "senhaSegura123"}'
 
-Login (get token)
+Login : (get token)
 
-Bashcurl -X POST https://volurya.onrender.com/api/login \
+Bash curl -X POST https://volurya.onrender.com/api/login \
   -H "Content-Type: application/json" \
   -d '{"email": "fan@volurya.com", "password": "senhaSegura123"}'
+
 Copy the access_token.
 
-Protected route example
+Protected route example:
 
-Bashcurl -X GET https://volurya.onrender.com/api/products \
+Bash curl -X GET https://volurya.onrender.com/api/products \
   -H "Authorization: Bearer YOUR_TOKEN_HERE"
 
 
@@ -186,26 +192,27 @@ Camadas separadas (Clean Architecture simplificada):
 
 ## 🚀 Como Rodar Localmente (Docker)
 
-1. Clone o repositório
+Clone o repositório :
 
 git clone https://github.com/Iagobarros211256/volurya.git
 cd volurya
 
-Suba os containers
+Suba os containers :
 
 docker compose up --build -d
-API disponível em: http://localhost:8000
+API disponível em: http://localhost:8080
 
-Parar tudo
+Parar tudo :
 
 docker compose down -v
 
-🗄️ Acessando o Banco (Local)
+🗄️ Acessando o Banco (Local):
+
 docker exec -it volurya_postgres psql -U volurya -d volurya_db
 
 Comandos rápidos:
-SQL\dt                  # lista tabelas
-SELECT * FROM users; # ver usuários
+\dt                  # lista tabelas
+SELECT * FROM user; # ver usuários
 SELECT * FROM products;
 
 🔐 Fluxo de Autenticação (JWT)
