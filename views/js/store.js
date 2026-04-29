@@ -1,5 +1,3 @@
-// static/js/store.js
-
 document.addEventListener('DOMContentLoaded', async () => {
   const container = document.getElementById('store-items');
   const loading = document.getElementById('loading');
@@ -11,8 +9,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   try {
     const res = await fetch('/api/products?limit=12');
-
-    
 
     if (!res.ok) throw new Error('Erro ao carregar produtos');
 
@@ -27,7 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const col = document.createElement('div');
       col.className = 'col';
       col.innerHTML = `
-        <div class="card bg-dark border-danger h-100 shadow-lg hover-glow">
+        <div class="card bg-dark border-danger h-100 shadow-lg">
           <img src="/static/imagens/camiseta-feminina-preta.jpg" class="card-img-top" alt="${product.name}">
           <div class="card-body d-flex flex-column">
             <h5 class="card-title text-danger">${product.name}</h5>
@@ -43,14 +39,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>
       `;
       container.appendChild(col);
-    });
 
-    // Botão Comprar (por enquanto só toast – depois vira carrinho)
-    document.querySelectorAll('.buy-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.dataset.id;
-        showToast(`Produto ${id} adicionado ao carrinho!`, 'success');
-        // Aqui você pode chamar uma função addToCart(id) depois
+      // listener adicionado direto no botão após criação
+      col.querySelector('.buy-btn').addEventListener('click', async () => {
+        try {
+          const res = await fetch('/api/orders', {
+            method: 'POST',
+            body: JSON.stringify({ product_id: parseInt(product.id), quantity: 1 })
+          });
+
+          const data = await res.json();
+          if (res.ok) {
+            window.location.href = data.payment_url;
+          } else {
+            showToast(data.error, 'danger');
+          }
+        } catch (err) {
+          showToast(err.message, 'danger');
+        }
       });
     });
 
@@ -59,27 +65,4 @@ document.addEventListener('DOMContentLoaded', async () => {
   } finally {
     loading.style.display = 'none';
   }
-});
-
-// ... (restante do store.js)
-
-document.querySelectorAll('.buy-btn').forEach(btn => {
-  btn.addEventListener('click', async () => {
-    const id = btn.dataset.id;
-    try {
-      const res = await fetch('/api/orders', {
-        method: 'POST',
-        body: JSON.stringify({ product_id: id, quantity: 1 })
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        window.location.href = data.payment_url;  // link do PagSeguro
-      } else {
-        showToast(data.error, 'danger');
-      }
-    } catch (err) {
-      showToast(err.message, 'danger');
-    }
-  });
 });
