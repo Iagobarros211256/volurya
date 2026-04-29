@@ -10,3 +10,4 @@ bin/
 # IDE / editor
 .vscode/
 .idea/
+.env
