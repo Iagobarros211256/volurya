@@ -59,6 +59,35 @@ Bash    docker compose down -v
 
 
 docker exec -it volurya_postgres psql -U volurya -d volurya_db
+docker exec -it volurya_postgres psql -U volurya -d volurya_db -c "
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    role TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS products (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    price NUMERIC(10,2) NOT NULL CHECK (price >= 0),
+    stock INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS orders (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    product_id INTEGER NOT NULL REFERENCES products(id),
+    quantity INTEGER NOT NULL,
+    total NUMERIC(10,2) NOT NULL,
+    status TEXT NOT NULL,
+    charge_id TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);"
+
 Quick checks on database :
 
 SQL\dt                  # list tables
