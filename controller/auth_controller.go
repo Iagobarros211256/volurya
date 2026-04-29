@@ -60,8 +60,4 @@ func (a *AuthController) Signup(ctx *gin.Context) {
 		"access_token": token,
 	})
 
-	ctx.JSON(201, gin.H{
-		"message":      "user created",
-		"access_token": token,
-	})
 }

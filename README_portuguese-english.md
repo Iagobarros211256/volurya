@@ -47,8 +47,8 @@ cd volurya
 
 Start services:
 
-Bash    docker compose up --build -d
-API available at: http://localhost:8000
+docker compose up --build -d
+API available at: http://localhost:8080
 
 Stop everything:
 
@@ -56,11 +56,14 @@ Bash    docker compose down -v
 
 
 🗄️ Database Access (Local)
-Bash     docker exec -it volurya_postgres psql -U volurya -d volurya_db
-Quick checks:
+
+
+docker exec -it volurya_postgres psql -U volurya -d volurya_db
+Quick checks on database :
+
 SQL\dt                  # list tables
 SELECT * FROM user; # see users
-SELECT * FROM products;
+SELECT * FROM products; # dosent exist (fix this problem now)
 
 
 
