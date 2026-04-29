@@ -228,11 +228,12 @@ Login (gera token)
 curl -X POST https://volurya.onrender.com/api/login \
   -H "Content-Type: application/json" \
   -d '{"email": "fã@volurya.com", "password": "senhaSegura123"}'
+
 Copie o access_token da resposta.
 
 Rota protegida
 
-Bashcurl -X GET https://volurya.onrender.com/api/products \
+curl -X GET https://volurya.onrender.com/api/products \
   -H "Authorization: Bearer SEU_TOKEN_AQUI"
 
 🔌 Principais Endpoints
