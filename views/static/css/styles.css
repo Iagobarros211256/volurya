@@ -1,48 +1,4 @@
-
-body {font-family: "Russo One", serif;}
-
-
-.fa {
-    padding: 20px;
-    font-size: 30px;
-    width: 70px;
-    text-align: center;
-    text-decoration: none;
-    margin: 5px 2px;
-}
-  
-.fa:hover {
-    opacity: 0.5;
-}
-
-.fa-facebook {
-    background: transparent;
-    color: white;
-}
-  
-.fa-youtube {
-    background: transparent;
-    color: white;
-}
-  
-    .fa-instagram {
-    background: transparent;
-    color: white;
-    }
-  
-    .fa-spotify {
-    background: transparent;
-    color: white;
-    }
-
-
-/*band logo que eu chamei de hero */
-  
-  .hero {
-  min-height: 100vh;
-  background: #000;
-}
-
+/* regra base — deve vir ANTES das media queries */
 .hero-logo {
   width: 1000px;
   opacity: 0;
@@ -50,27 +6,6 @@ body {font-family: "Russo One", serif;}
              microShake 0.10s ease-in-out 1s 2,
              glowPulse 3s ease-in-out 1.3s infinite;
 }
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-@keyframes microShake {
-  0% { transform: translateX(0); }
-  25% { transform: translateX(-2px); }
-  50% { transform: translateX(2px); }
-  75% { transform: translateX(-1px); }
-  100% { transform: translateX(0); }
-}
-
-@keyframes glowPulse {
-  0% { filter: drop-shadow(0 0 2px #ff0000); }
-  50% { filter: drop-shadow(0 0 8px #ff0000); }
-  100% { filter: drop-shadow(0 0 2px #ff0000); }
-}
-
-/*media queries do hero logo*/
 
 @media (max-width: 576px) {
   .hero-logo {
@@ -84,10 +19,7 @@ body {font-family: "Russo One", serif;}
   }
 }
 
-
-
-
-
+/* REMOVA o segundo bloco .hero-logo { width: 1000px; } que estava aqui */
 
 
 
