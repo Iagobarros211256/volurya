@@ -59,7 +59,6 @@ Bash    docker compose down -v
 
 
 docker exec -it volurya_postgres psql -U volurya -d volurya_db
-docker exec -it volurya_postgres psql -U volurya -d volurya_db -c "
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
