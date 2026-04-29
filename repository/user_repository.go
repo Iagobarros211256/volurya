@@ -16,11 +16,6 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
-type UserRepositoryInterface interface {
-	GetByEmail(email string) (*models.User, error)
-	Create(user models.User) (int, error)
-}
-
 func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
 	row := r.db.QueryRow(
 		"SELECT id, email, password, role FROM users WHERE email = $1",
