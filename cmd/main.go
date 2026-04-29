@@ -74,10 +74,10 @@ func main() {
 	orderController := controller.NewOrderController(orderUsecase)
 
 	// Rotas
-	api := router.Group("/api")
+	public := router.Group("/api")
 	{
-		api.POST("/signup", authController.Signup)
-		api.POST("/login", authController.Login)
+		public.POST("/signup", authController.Signup)
+		public.POST("/login", authController.Login)
 	}
 
 	protected := router.Group("/api")
