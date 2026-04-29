@@ -12,12 +12,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const res = await fetch('/api/products?limit=12');
 
-    if (res.status === 401) {
-      localStorage.removeItem('token');
-      showToast('Sessão expirada. Faça login para comprar.', 'danger');
-      setTimeout(() => window.location.href = '/login', 2000);
-      return;
-    }
+    
 
     if (!res.ok) throw new Error('Erro ao carregar produtos');
 

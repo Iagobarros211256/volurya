@@ -5,7 +5,7 @@ Backend API in Go for managing band-related products (t-shirts, caps, socks, dru
 
 Personal learning project / showcase built to practice real-world backend concepts.
 
-![Badge](https://img.shields.io/badge/Go-1.25-blue?logo=go&logoColor=white)
+![Badge](https://img.shields.io/badge/Go-1.23-blue?logo=go&logoColor=white)
 ![Badge](https://img.shields.io/badge/Gin-1.10-green)
 ![Badge](https://img.shields.io/badge/PostgreSQL-16-blue)
 ![Badge](https://img.shields.io/badge/Docker-Ready-blue)
@@ -62,7 +62,7 @@ docker exec -it volurya_postgres psql -U volurya -d volurya_db
 Quick checks on database :
 
 SQL\dt                  # list tables
-SELECT * FROM user; # see users
+SELECT * FROM users; # see users
 SELECT * FROM products; # dosent exist (fix this problem now)
 
 
