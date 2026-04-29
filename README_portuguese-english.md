@@ -63,7 +63,7 @@ Quick checks on database :
 
 SQL\dt                  # list tables
 SELECT * FROM users; # see users
-SELECT * FROM products; # dosent exist (fix this problem now)
+SELECT * FROM products;
 
 
 
@@ -97,7 +97,7 @@ POST       /api/signup                Create user (role: user)                  
 POST       /api/login                 Generate   JWT token                          No
 GET        /api/products              List products (cursor pagination)             Yes
 POST       /api/products              Create product (with ownership)               Yes
-GET        /api/products/:id          Get product by ID                             Yes
+GET        /api/products/:productId          Get product by ID                             Yes
 PUT        /api/products/:id          Update product                                Yes
 DELETE     /api/products/:id          Delete product (ownership check)              Yes
 GET        /ping                      Healthcheck                                   No
