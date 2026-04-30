@@ -66,8 +66,8 @@ func ValidateToken(tokenString string) (*Claims, error) {
 	return nil, errors.New("token invalid or expired")
 }
 
-func GenerateRefreshToken(userID int, role string) (string, time.Time, error) {
-	expiresAt := time.Now().Add(7 * 24 * time.Hour) // 7 dias
+func GenerateRefreshToken(userID int, role string, duration time.Duration) (string, time.Time, error) {
+	expiresAt := time.Now().Add(duration)
 
 	claims := Claims{
 		UserID: userID,

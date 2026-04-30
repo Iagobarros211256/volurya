@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"api/auth"
+	"api/config"
 	"api/models"
 	"api/repository"
 	"errors"
@@ -57,12 +58,12 @@ func (a *AuthUsecase) Signup(email, password string) (string, string, error) {
 		return "", "", err
 	}
 
-	accessToken, err := auth.GenerateToken(id, user.Role, 15*time.Minute)
+	accessToken, err := auth.GenerateToken(id, user.Role, config.GetAccessTokenDuration())
 	if err != nil {
 		return "", "", err
 	}
 
-	refreshToken, expiresAt, err := auth.GenerateRefreshToken(id, user.Role)
+	refreshToken, expiresAt, err := auth.GenerateRefreshToken(id, user.Role, config.GetRefreshTokenDuration())
 	if err != nil {
 		return "", "", err
 	}
@@ -85,12 +86,12 @@ func (a *AuthUsecase) Login(email, password string) (string, string, error) {
 		return "", "", errors.New("invalid credentials")
 	}
 
-	accessToken, err := auth.GenerateToken(user.ID, user.Role, 15*time.Minute)
+	accessToken, err := auth.GenerateToken(user.ID, user.Role, config.GetAccessTokenDuration())
 	if err != nil {
 		return "", "", err
 	}
 
-	refreshToken, expiresAt, err := auth.GenerateRefreshToken(user.ID, user.Role)
+	refreshToken, expiresAt, err := auth.GenerateRefreshToken(user.ID, user.Role, config.GetRefreshTokenDuration())
 	if err != nil {
 		return "", "", err
 	}
@@ -103,19 +104,16 @@ func (a *AuthUsecase) Login(email, password string) (string, string, error) {
 }
 
 func (a *AuthUsecase) RefreshToken(refreshToken string) (string, string, error) {
-	// Valida o token JWT
 	claims, err := auth.ValidateToken(refreshToken)
 	if err != nil {
 		return "", "", errors.New("invalid refresh token")
 	}
 
-	// Busca no banco
 	rt, err := a.refreshTokenRepo.GetByToken(refreshToken)
 	if err != nil || rt == nil {
 		return "", "", errors.New("refresh token not found")
 	}
 
-	// Verifica se foi revogado ou expirou
 	if rt.Revoked {
 		return "", "", errors.New("refresh token revoked")
 	}
@@ -123,18 +121,16 @@ func (a *AuthUsecase) RefreshToken(refreshToken string) (string, string, error) 
 		return "", "", errors.New("refresh token expired")
 	}
 
-	// Revoga o token atual (rotação)
 	if err := a.refreshTokenRepo.Revoke(refreshToken); err != nil {
 		return "", "", err
 	}
 
-	// Gera novos tokens
-	newAccessToken, err := auth.GenerateToken(claims.UserID, claims.Role, 15*time.Minute)
+	newAccessToken, err := auth.GenerateToken(claims.UserID, claims.Role, config.GetAccessTokenDuration())
 	if err != nil {
 		return "", "", err
 	}
 
-	newRefreshToken, expiresAt, err := auth.GenerateRefreshToken(claims.UserID, claims.Role)
+	newRefreshToken, expiresAt, err := auth.GenerateRefreshToken(claims.UserID, claims.Role, config.GetRefreshTokenDuration())
 	if err != nil {
 		return "", "", err
 	}
