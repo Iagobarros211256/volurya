@@ -24,6 +24,8 @@ services:
     volumes:
       - ./:/go/src/app   # monta o código do host
     environment:
+      ACCESS_TOKEN_DURATION_MINUTES: ${ACCESS_TOKEN_DURATION_MINUTES}
+      REFRESH_TOKEN_DURATION_DAYS: ${REFRESH_TOKEN_DURATION_DAYS}
       PAGSEGURO_EMAIL: iagobarrosgomes2112@gmail.com
       PAGSEGURO_TOKEN: e97a3eef-3822-40ed-b7c7-8f1b14e2eccf8988860f4da393c9c841e9621e816428892c-ff1b-4606-9233-886cd85bf9e9
       PAGSEGURO_SANDBOX: true  # mude pra false em prod
