@@ -62,10 +62,11 @@ func main() {
 	productRepository := repository.NewProductRepository(dbConnection)
 	userRepository := repository.NewUserRepository(dbConnection)
 	orderRepository := repository.NewOrderRepository(dbConnection)
+	refreshTokenRepository := repository.NewRefreshTokenRepository(dbConnection)
 
 	// Usecases
 	productUseCase := usecase.NewProductUsecase(productRepository)
-	authUseCase := usecase.NewAuthUsecase(userRepository)
+	authUseCase := usecase.NewAuthUsecase(userRepository, refreshTokenRepository)
 	orderUsecase := usecase.NewOrderUsecase(orderRepository, productRepository)
 
 	// Controllers
@@ -73,13 +74,16 @@ func main() {
 	authController := controller.NewAuthController(authUseCase)
 	orderController := controller.NewOrderController(orderUsecase)
 
-	// Rotas
+	// Rotas públicas
 	public := router.Group("/api")
 	{
 		public.POST("/signup", authController.Signup)
 		public.POST("/login", authController.Login)
+		public.POST("/refresh", authController.RefreshToken)
+		public.POST("/logout", authController.Logout)
 	}
 
+	// Rotas protegidas
 	protected := router.Group("/api")
 	protected.Use(auth.Middleware())
 	{

@@ -65,3 +65,25 @@ func ValidateToken(tokenString string) (*Claims, error) {
 	log.Printf("JWT invalid claims or expired")
 	return nil, errors.New("token invalid or expired")
 }
+
+func GenerateRefreshToken(userID int, role string) (string, time.Time, error) {
+	expiresAt := time.Now().Add(7 * 24 * time.Hour) // 7 dias
+
+	claims := Claims{
+		UserID: userID,
+		Role:   role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expiresAt),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := token.SignedString(secret)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+
+	return signed, expiresAt, nil
+}

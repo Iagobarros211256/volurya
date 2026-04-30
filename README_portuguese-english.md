@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS orders (
     status TEXT NOT NULL,
     charge_id TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);"
+);
 
 Quick checks on database :
 
