@@ -422,3 +422,31 @@ Iago Barros
 @Iagobarros2112  
 Fortaleza, Brasil – 2026  
 Feito com ❤️, raiva e muito café para aprender e mostrar como penso arquitetura backend.
+
+
+
+
+## 🗺️ Roadmap
+
+### ✅ Concluído
+- [x] Clean Architecture (controller → usecase → repository)
+- [x] JWT authentication com bcrypt
+- [x] CRUD de produtos com ownership
+- [x] Paginação por cursor
+- [x] Refresh token com rotação e revogação no banco
+- [x] Logout com invalidação do token
+- [x] Duração dos tokens configurável via env
+- [x] Migrations automáticas com golang-migrate
+- [x] Testes unitários e de integração
+- [x] Docker + deploy no Render
+
+### 🔜 Próximos passos
+- [ ] Verificação de estoque no CreateOrder
+- [ ] Webhook do PagSeguro (atualizar status do pedido para `paid`)
+- [ ] Guard de role `admin` nas rotas de criação/deleção de produtos
+- [ ] Rate limiting nas rotas públicas (signup, login)
+- [ ] Upload de imagem para produtos (S3 ou Cloudflare R2)
+- [ ] Carrinho de compras (múltiplos itens antes do checkout)
+- [ ] Logs estruturados com `slog` ou `zap`
+- [ ] Unificação de `ConnectDB`/`SetupDB`
+- [ ] Testes para controllers e repositories
