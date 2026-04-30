@@ -1,11 +1,11 @@
-# Volurya API
+ Volurya API
 
 Backend API in Go for managing band-related products (t-shirts, caps, socks, drumsticks, etc).  
 **Live deployment:** https://volurya.onrender.com
 
 Personal learning project / showcase built to practice real-world backend concepts.
 
-![Badge](https://img.shields.io/badge/Go-1.23-blue?logo=go&logoColor=white)
+![Badge](https://img.shields.io/badge/Go-1.25-blue?logo=go&logoColor=white)
 ![Badge](https://img.shields.io/badge/Gin-1.10-green)
 ![Badge](https://img.shields.io/badge/PostgreSQL-16-blue)
 ![Badge](https://img.shields.io/badge/Docker-Ready-blue)
@@ -15,7 +15,7 @@ Personal learning project / showcase built to practice real-world backend concep
 ## 🎯 Project Goals
 
 - Practice **Clean Architecture** (simplified)
-- Implement secure **JWT authentication** (bcrypt + validation)
+- Implement secure **JWT authentication** (bcrypt + refresh token rotation)
 - Work with real **PostgreSQL** (even in tests)
 - Build proper **unit + integration tests**
 - Standardize environment with **Docker**
@@ -39,147 +39,181 @@ Simplified Clean Architecture layers:
 
 ## 🚀 Running Locally (Docker)
 
-1. Clone the repo
+Clone the repo:
+
 ```bash
 git clone https://github.com/Iagobarros211256/volurya.git
 cd volurya
+```
 
+Create a `.env` file in the root:
+
+```env
+JWT_SECRET=your_secret_here
+POSTGRES_HOST=volurya_postgres
+POSTGRES_PORT=5432
+POSTGRES_USER=volurya
+POSTGRES_PASSWORD=volurya
+POSTGRES_DB=volurya_db
+PAGSEGURO_TOKEN=your_token_here
+PAGSEGURO_EMAIL=your_email_here
+PAGSEGURO_SANDBOX=true
+PAGSEGURO_WEBHOOK_URL=http://localhost:8080/api/webhook
+ACCESS_TOKEN_DURATION_MINUTES=15
+REFRESH_TOKEN_DURATION_DAYS=7
+```
 
 Start services:
 
+```bash
 docker compose up --build -d
+```
+
 API available at: http://localhost:8080
 
 Stop everything:
 
-Bash    docker compose down -v
+```bash
+docker compose down -v
+```
 
+## 🗄️ Database Access (Local)
 
-🗄️ Database Access (Local)
-
-
+```bash
 docker exec -it volurya_postgres psql -U volurya -d volurya_db
-CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    role TEXT NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-CREATE TABLE IF NOT EXISTS products (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    description TEXT,
-    price NUMERIC(10,2) NOT NULL CHECK (price >= 0),
-    stock INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-CREATE TABLE IF NOT EXISTS orders (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    product_id INTEGER NOT NULL REFERENCES products(id),
-    quantity INTEGER NOT NULL,
-    total NUMERIC(10,2) NOT NULL,
-    status TEXT NOT NULL,
-    charge_id TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+```
 
-Quick checks on database :
+Tables are created automatically by migrations on startup. No manual SQL commands needed.
 
-SQL\dt                  # list tables
-SELECT * FROM users; # see users
+Quick checks:
+
+```sql
+\dt                    -- list tables
+SELECT * FROM users;   -- see users
 SELECT * FROM products;
+```
 
+## 🔐 Authentication Flow (JWT)
 
+Signup or Login return two tokens:
+- `access_token` — short-lived (15 min), used on protected routes
+- `refresh_token` — long-lived (7 days), used to renew the access_token
 
-🔐 Authentication Flow (JWT)
+**Signup:**
 
-## 🔐 Fluxo de Autenticação (JWT)
+```bash
+curl -X POST https://volurya.onrender.com/api/signup \
+  -H "Content-Type: application/json" \
+  -d '{"email": "fan@volurya.com", "password": "senhaSegura123"}'
+```
 
-Signup ou Login retornam dois tokens:
-- `access_token` — curto prazo (15 min), usado nas rotas protegidas
-- `refresh_token` — longo prazo (7 dias), usado para renovar o access_token
+**Login:**
 
-Quando o access_token expirar, use o refresh_token para obter um novo par:
+```bash
+curl -X POST https://volurya.onrender.com/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "fan@volurya.com", "password": "senhaSegura123"}'
+```
 
+**Refresh (when access_token expires):**
+
+```bash
 curl -X POST https://volurya.onrender.com/api/refresh \
   -H "Content-Type: application/json" \
-  -d '{"refresh_token": "SEU_REFRESH_TOKEN"}'
+  -d '{"refresh_token": "YOUR_REFRESH_TOKEN"}'
+```
 
-Logout (revoga o refresh_token no banco):
+**Logout (revokes refresh_token):**
 
+```bash
 curl -X POST https://volurya.onrender.com/api/logout \
   -H "Content-Type: application/json" \
-  -d '{"refresh_token": "SEU_REFRESH_TOKEN"}'
+  -d '{"refresh_token": "YOUR_REFRESH_TOKEN"}'
+```
 
-🔌 Main Endpoints
+**Protected route example:**
 
-Method      Endpoint                      Description                              HasAuth?
-POST       /api/signup                Create user (role: user)                      No Auth 
-POST       /api/login                 Generate   JWT token                          No
-GET        /api/products              List products (cursor pagination)             Yes
-POST       /api/products              Create product (with ownership)               Yes
-GET        /api/products/:productId          Get product by ID                             Yes
-PUT        /api/products/:id          Update product                                Yes
-DELETE     /api/products/:id          Delete product (ownership check)              Yes
-GET        /ping                      Healthcheck                                   No
-POST       /api/refresh               Gera novo access_token via refresh_token    Não
-POST       /api/logout                Revoga o refresh_token                      Não
+```bash
+curl -X GET https://volurya.onrender.com/api/products \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
 
-🧪 Tests
-Bash# Start isolated test database
+## 🔌 Main Endpoints
+
+| Method | Endpoint | Description | Auth? |
+|--------|----------|-------------|-------|
+| POST | /api/signup | Create user (role: user) | No |
+| POST | /api/login | Generate JWT tokens | No |
+| POST | /api/refresh | Generate new token pair via refresh_token | No |
+| POST | /api/logout | Revoke refresh_token | No |
+| GET | /api/products | List products (cursor pagination) | Yes |
+| POST | /api/products | Create product (with ownership) | Yes |
+| GET | /api/products/:productId | Get product by ID | Yes |
+| PUT | /api/products/:productId | Update product | Yes |
+| DELETE | /api/products/:productId | Delete product (ownership check) | Yes |
+| GET | /ping | Healthcheck | No |
+
+## 🧪 Tests
+
+Start isolated test database:
+
+```bash
 docker compose -f docker-compose.test.yml up -d
+```
 
-# Run all tests
+Run all tests:
+
+```bash
 go test ./... -v
+```
 
-# Coverage report
+Coverage report:
+
+```bash
 go test ./... -coverprofile=cover.out
 go tool cover -html=cover.out
+```
+
 Includes:
+- Unit tests (usecases with mocked repo)
+- Integration tests (HTTP + real PostgreSQL)
+- DB setup/cleanup helpers
 
-Unit tests (usecases with mocked repo)
-Integration tests (HTTP + real PostgreSQL)
-DB setup/cleanup helpers
+## 🛠️ Architectural Decisions
 
-🛠️ Architectural Decisions
+- Simplified Clean Architecture
+- JWT authentication with refresh token rotation
+- Token duration configurable via environment variables
+- Automatic migrations with golang-migrate
+- Real PostgreSQL in integration tests
+- Ownership enforcement on products (user_id)
+- Docker as standard environment
 
-Simplified Clean Architecture
-JWT authentication (no refresh token yet)
-Real PostgreSQL in integration tests
-Ownership enforcement on products (user_id)
-Docker as standard environment
+## ❄️ Current Status
 
-❄️ Current Status
-Backend frozen and deployed — fully achieves its learning/showcase goals.
-Further features only if new context or real need arises.
+Backend in active development — refresh token, migrations and env-based config implemented.
 
-## 🧠 Modelo Mental Rápido
+## 🧠 Quick Mental Model
+Signup/Login  → access_token (15min) + refresh_token (7 days)
+access_token  → sent in Authorization: Bearer ...
+Middleware    → validates token and injects user_id
+UseCase       → business rules
+Repository    → database
+refresh_token → used in /api/refresh to renew access_token
+logout        → revokes refresh_token in the database
 
-Signup/Login → access_token (15min) + refresh_token (7 dias)
-access_token → enviado no header Authorization: Bearer ...
-Middleware   → valida token e injeta user_id
-refresh_token → usado em /api/refresh para renovar o access_token
-logout       → revoga o refresh_token no banco
+## 📬 Contact
 
-
-📬 Contact
-Iago Barros
-@Iagobarros2112
-Fortaleza, Brazil – February 2026
+Iago Barros  
+@Iagobarros2112  
+Fortaleza, Brazil – 2026  
 Made with ❤️, anger and lots of coffee to learn and demonstrate backend thinking.
 
+---
 
+# Volurya API (Português)
 
-README.md em PORTUGUÊS 
-
-
-# Volurya API
-
-Backend em Go para gerenciar produtos da banda Volurya (camisetas, bonés, meias, baquetas, etc).  
+Backend em Go para gerenciar produtos da banda Volurya (camisetas, bonés, meias, baquetas, etc).
 
 **Deploy atual:** https://volurya.onrender.com
 
@@ -195,7 +229,7 @@ Projeto pessoal / laboratório de aprendizado para praticar conceitos reais de b
 ## 🎯 Objetivos do Projeto
 
 - Praticar **Clean Architecture** simplificada
-- Implementar autenticação **JWT segura** (bcrypt + validação)
+- Implementar autenticação **JWT segura** (bcrypt + refresh token com rotação)
 - Trabalhar com **PostgreSQL real** (inclusive nos testes)
 - Fazer **testes reais** (unitários + integração)
 - Padronizar ambiente com **Docker**
@@ -219,104 +253,172 @@ Camadas separadas (Clean Architecture simplificada):
 
 ## 🚀 Como Rodar Localmente (Docker)
 
-Clone o repositório :
+Clone o repositório:
 
+```bash
 git clone https://github.com/Iagobarros211256/volurya.git
 cd volurya
+```
 
-Suba os containers :
+Crie um arquivo `.env` na raiz:
 
+```env
+JWT_SECRET=sua_chave_secreta_aqui
+POSTGRES_HOST=volurya_postgres
+POSTGRES_PORT=5432
+POSTGRES_USER=volurya
+POSTGRES_PASSWORD=volurya
+POSTGRES_DB=volurya_db
+PAGSEGURO_TOKEN=seu_token_aqui
+PAGSEGURO_EMAIL=seu_email_aqui
+PAGSEGURO_SANDBOX=true
+PAGSEGURO_WEBHOOK_URL=http://localhost:8080/api/webhook
+ACCESS_TOKEN_DURATION_MINUTES=15
+REFRESH_TOKEN_DURATION_DAYS=7
+```
+
+Suba os containers:
+
+```bash
 docker compose up --build -d
+```
+
 API disponível em: http://localhost:8080
 
-Parar tudo :
+Parar tudo:
 
+```bash
 docker compose down -v
+```
 
-🗄️ Acessando o Banco (Local):
+## 🗄️ Acessando o Banco (Local)
 
+```bash
 docker exec -it volurya_postgres psql -U volurya -d volurya_db
+```
+
+As tabelas são criadas automaticamente pelas migrations ao iniciar a API. Nenhum comando SQL manual é necessário.
 
 Comandos rápidos:
-\dt                  # lista tabelas
-SELECT * FROM user; # ver usuários
+
+```sql
+\dt                    -- lista tabelas
+SELECT * FROM users;   -- ver usuários
 SELECT * FROM products;
+```
 
-🔐 Fluxo de Autenticação (JWT)
+## 🔐 Fluxo de Autenticação (JWT)
 
-Cadastro (cria usuário normal – role: "user")
+Signup ou Login retornam dois tokens:
+- `access_token` — curto prazo (15 min), usado nas rotas protegidas
+- `refresh_token` — longo prazo (7 dias), usado para renovar o access_token
 
+**Cadastro:**
+
+```bash
 curl -X POST https://volurya.onrender.com/api/signup \
   -H "Content-Type: application/json" \
-  -d '{"email": "fã@volurya.com", "password": "senhaSegura123"}'
+  -d '{"email": "fan@volurya.com", "password": "senhaSegura123"}'
+```
 
-Login (gera token)
+**Login:**
 
+```bash
 curl -X POST https://volurya.onrender.com/api/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "fã@volurya.com", "password": "senhaSegura123"}'
+  -d '{"email": "fan@volurya.com", "password": "senhaSegura123"}'
+```
 
-Copie o access_token da resposta.
+**Refresh (quando o access_token expirar):**
 
-Rota protegida
+```bash
+curl -X POST https://volurya.onrender.com/api/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refresh_token": "SEU_REFRESH_TOKEN"}'
+```
 
+**Logout (revoga o refresh_token):**
+
+```bash
+curl -X POST https://volurya.onrender.com/api/logout \
+  -H "Content-Type: application/json" \
+  -d '{"refresh_token": "SEU_REFRESH_TOKEN"}'
+```
+
+**Rota protegida:**
+
+```bash
 curl -X GET https://volurya.onrender.com/api/products \
-  -H "Authorization: Bearer SEU_TOKEN_AQUI"
+  -H "Authorization: Bearer SEU_ACCESS_TOKEN"
+```
 
-🔌 Principais Endpoints
+## 🔌 Principais Endpoints
 
-Metodo      Endpoint                      Descricao                              Autorizacao?
-POST       /api/signup                Create user (role: user)                      nao
-POST       /api/login                 Generate   JWT token                          nao
-GET        /api/products              List products (cursor pagination)             sim
-POST       /api/products              Create product (with ownership)               sim
-GET        /api/products/:id          Get product by ID                             sim
-PUT        /api/products/:id          Update product                                sim
-DELETE     /api/products/:id          Delete product (ownership check)              sim
-GET        /ping                      Healthcheck                                   nao
+| Método | Endpoint | Descrição | Auth? |
+|--------|----------|-----------|-------|
+| POST | /api/signup | Cria usuário (role: user) | Não |
+| POST | /api/login | Gera tokens JWT | Não |
+| POST | /api/refresh | Gera novo par de tokens via refresh_token | Não |
+| POST | /api/logout | Revoga o refresh_token | Não |
+| GET | /api/products | Lista produtos (paginação por cursor) | Sim |
+| POST | /api/products | Cria produto (com ownership) | Sim |
+| GET | /api/products/:productId | Busca produto por ID | Sim |
+| PUT | /api/products/:productId | Atualiza produto | Sim |
+| DELETE | /api/products/:productId | Deleta produto (verifica ownership) | Sim |
+| GET | /ping | Healthcheck | Não |
 
-🧪 Testes
- Banco de teste isolado
+## 🧪 Testes
+
+Banco de teste isolado:
+
+```bash
 docker compose -f docker-compose.test.yml up -d
+```
 
-# Rodar todos os testes
+Rodar todos os testes:
+
+```bash
 go test ./... -v
+```
 
-# Ver cobertura
+Ver cobertura:
+
+```bash
 go test ./... -coverprofile=cover.out
 go tool cover -html=cover.out
+```
 
 Inclui:
+- Testes unitários (usecase com repo mockado)
+- Testes de integração (HTTP + banco real)
+- Helpers de setup/cleanup do banco
 
-Testes unitários (usecase com repo mockado)
-Testes de integração (HTTP + banco real)
-Helpers de setup/cleanup do banco
+## 🛠️ Decisões de Arquitetura
 
-🛠️ Decisões de Arquitetura
+- Clean Architecture simplificada
+- Refresh token com rotação e revogação no banco
+- Duração dos tokens configurável via variáveis de ambiente
+- Migrations automáticas com golang-migrate
+- Banco real nos testes de integração
+- Ownership em produtos (user_id)
+- Docker como ambiente padrão
 
-Clean Architecture simplificada
-Autenticação JWT (sem refresh token por enquanto)
-Banco real nos testes de integração
-Ownership em produtos (user_id)
-Docker como ambiente padrão
+## ❄️ Status Atual
 
-❄️ Status Atual
-Backend finalizado e deployado no Render (free tier) — objetivos de aprendizado atingidos.
-Novas features só se surgir necessidade real ou novo contexto.
+Backend em evolução ativa — refresh token, migrations e configuração via env implementados.
 
+## 🧠 Modelo Mental Rápido
+Signup/Login  → access_token (15min) + refresh_token (7 dias)
+access_token  → enviado no header Authorization: Bearer ...
+Middleware    → valida token e injeta user_id
+UseCase       → regras de negócio
+Repository    → banco
+refresh_token → usado em /api/refresh para renovar o access_token
+logout        → revoga o refresh_token no banco
 
-🧠 Modelo Mental Rápido
-Signup → cria usuário com role "user"
-Login  → retorna JWT
-JWT    → enviado no header Authorization: Bearer ...
-Middleware → valida token e injeta user_id
-UseCase → regras de negócio
-Repository → banco
+## 📬 Contato
 
-
-📬 Contato
-Iago Barros
-@Iagobarros2112
-Fortaleza, Brasil – Fevereiro 2026
-Feito com ❤️,raiva e muito café para aprender e mostrar como penso arquitetura backend.
-
+Iago Barros  
+@Iagobarros2112  
+Fortaleza, Brasil – 2026  
+Feito com ❤️, raiva e muito café para aprender e mostrar como penso arquitetura backend.
