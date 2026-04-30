@@ -20,6 +20,7 @@ RUN adduser -D -u 1001 appuser
 WORKDIR /app
 COPY --from=builder /app/app .
 COPY --from=builder /app/views ./views
+COPY --from=builder /app/db/migrations ./db/migrations
 USER appuser
 EXPOSE 8080
 CMD ["./app"]
