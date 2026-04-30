@@ -97,26 +97,23 @@ SELECT * FROM products;
 
 🔐 Authentication Flow (JWT)
 
-Signup : (creates normal user – role: "user")
+## 🔐 Fluxo de Autenticação (JWT)
 
-Bash  curl -X POST https://volurya.onrender.com/api/signup \
+Signup ou Login retornam dois tokens:
+- `access_token` — curto prazo (15 min), usado nas rotas protegidas
+- `refresh_token` — longo prazo (7 dias), usado para renovar o access_token
+
+Quando o access_token expirar, use o refresh_token para obter um novo par:
+
+curl -X POST https://volurya.onrender.com/api/refresh \
   -H "Content-Type: application/json" \
-  -d '{"email": "fan@volurya.com", "password": "senhaSegura123"}'
+  -d '{"refresh_token": "SEU_REFRESH_TOKEN"}'
 
-Login : (get token)
+Logout (revoga o refresh_token no banco):
 
-Bash curl -X POST https://volurya.onrender.com/api/login \
+curl -X POST https://volurya.onrender.com/api/logout \
   -H "Content-Type: application/json" \
-  -d '{"email": "fan@volurya.com", "password": "senhaSegura123"}'
-
-Copy the access_token.
-
-Protected route example:
-
-Bash curl -X GET https://volurya.onrender.com/api/products \
-  -H "Authorization: Bearer YOUR_TOKEN_HERE"
-
-
+  -d '{"refresh_token": "SEU_REFRESH_TOKEN"}'
 
 🔌 Main Endpoints
 
@@ -129,7 +126,8 @@ GET        /api/products/:productId          Get product by ID                  
 PUT        /api/products/:id          Update product                                Yes
 DELETE     /api/products/:id          Delete product (ownership check)              Yes
 GET        /ping                      Healthcheck                                   No
-
+POST       /api/refresh               Gera novo access_token via refresh_token    Não
+POST       /api/logout                Revoga o refresh_token                      Não
 
 🧪 Tests
 Bash# Start isolated test database
@@ -159,15 +157,13 @@ Docker as standard environment
 Backend frozen and deployed — fully achieves its learning/showcase goals.
 Further features only if new context or real need arises.
 
+## 🧠 Modelo Mental Rápido
 
-🧠 Quick Mental Model
-textSignup → creates user with role "user"
-Login  → returns JWT
-JWT    → sent in Authorization: Bearer ...
-Middleware → validates token & injects user_id
-UseCase → business rules
-Repository → database
-
+Signup/Login → access_token (15min) + refresh_token (7 dias)
+access_token → enviado no header Authorization: Bearer ...
+Middleware   → valida token e injeta user_id
+refresh_token → usado em /api/refresh para renovar o access_token
+logout       → revoga o refresh_token no banco
 
 
 📬 Contact
