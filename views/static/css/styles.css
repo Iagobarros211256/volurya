@@ -1,3 +1,6 @@
+body {
+  font-family: "Russo One", serif;
+}
 
 .hero-logo {
   width: 1000px;
@@ -18,8 +21,6 @@
     width: 200px;
   }
 }
-
-
 
 @keyframes fadeIn {
   from { opacity: 0; transform: scale(0.95); }
