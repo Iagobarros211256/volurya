@@ -58,6 +58,11 @@ func main() {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
 
+	// Migrations
+	if err := db.RunMigrations(dbConnection); err != nil {
+		log.Fatalf("failed to run migrations: %v", err)
+	}
+
 	// Repositories
 	productRepository := repository.NewProductRepository(dbConnection)
 	userRepository := repository.NewUserRepository(dbConnection)
