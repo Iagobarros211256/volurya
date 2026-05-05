@@ -18,13 +18,21 @@ func RunMigrations(db *sql.DB) error {
 		return fmt.Errorf("failed to create migration driver: %w", err)
 	}
 
-	// Busca o diretório do executável
+	// Tenta primeiro relativo ao executável (produção)
 	execPath, err := os.Executable()
 	if err != nil {
 		return fmt.Errorf("failed to get executable path: %w", err)
 	}
-	execDir := filepath.Dir(execPath)
-	migrationsPath := filepath.Join(execDir, "db", "migrations")
+	migrationsPath := filepath.Join(filepath.Dir(execPath), "db", "migrations")
+
+	// Se não existir (go run em dev), usa o diretório atual
+	if _, err := os.Stat(migrationsPath); os.IsNotExist(err) {
+		wd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("failed to get working directory: %w", err)
+		}
+		migrationsPath = filepath.Join(wd, "db", "migrations")
+	}
 
 	m, err := migrate.NewWithDatabaseInstance(
 		"file://"+migrationsPath,
