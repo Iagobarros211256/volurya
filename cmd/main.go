@@ -5,6 +5,7 @@ import (
 	"api/controller"
 	"api/db"
 	"api/repository"
+	"api/storage"
 	"api/usecase"
 	"context"
 	"log"
@@ -58,6 +59,12 @@ func main() {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
 
+	// Storage R2
+	r2Storage, err := storage.NewR2Storage()
+	if err != nil {
+		log.Fatalf("failed to initialize R2 storage: %v", err)
+	}
+
 	// Migrations
 	if err := db.RunMigrations(dbConnection); err != nil {
 		log.Fatalf("failed to run migrations: %v", err)
@@ -77,7 +84,7 @@ func main() {
 	cartUsecase := usecase.NewCartUsecase(cartRepository, productRepository)
 
 	// Controllers
-	productController := controller.NewProductController(productUseCase)
+	productController := controller.NewProductController(productUseCase, r2Storage)
 	authController := controller.NewAuthController(authUseCase)
 	orderController := controller.NewOrderController(orderUsecase)
 	cartController := controller.NewCartController(cartUsecase, orderUsecase)
@@ -108,6 +115,9 @@ func main() {
 		protected.PUT("/cart/items/:itemId", cartController.UpdateItem)
 		protected.DELETE("/cart/items/:itemId", cartController.RemoveItem)
 		protected.POST("/cart/checkout", cartController.Checkout)
+
+		//images protected route
+		protected.POST("/products/:productId/image", productController.UploadImage)
 	}
 
 	// Porta
