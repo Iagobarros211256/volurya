@@ -68,16 +68,19 @@ func main() {
 	userRepository := repository.NewUserRepository(dbConnection)
 	orderRepository := repository.NewOrderRepository(dbConnection)
 	refreshTokenRepository := repository.NewRefreshTokenRepository(dbConnection)
+	cartRepository := repository.NewCartRepository(dbConnection)
 
 	// Usecases
 	productUseCase := usecase.NewProductUsecase(productRepository)
 	authUseCase := usecase.NewAuthUsecase(userRepository, refreshTokenRepository)
 	orderUsecase := usecase.NewOrderUsecase(orderRepository, productRepository)
+	cartUsecase := usecase.NewCartUsecase(cartRepository, productRepository)
 
 	// Controllers
 	productController := controller.NewProductController(productUseCase)
 	authController := controller.NewAuthController(authUseCase)
 	orderController := controller.NewOrderController(orderUsecase)
+	cartController := controller.NewCartController(cartUsecase, orderUsecase)
 
 	// Rotas públicas
 	public := router.Group("/api")
@@ -91,13 +94,20 @@ func main() {
 	// Rotas protegidas
 	protected := router.Group("/api")
 	protected.Use(auth.Middleware())
-	{
+	{ //products protected routes
 		protected.GET("/products", productController.GetProducts)
 		protected.POST("/products", productController.CreateProduct)
 		protected.POST("/orders", orderController.CreateOrder)
 		protected.GET("/products/:productId", productController.GetProductById)
 		protected.PUT("/products/:productId", productController.UpdateProduct)
 		protected.DELETE("/products/:productId", productController.Delete)
+
+		//cart protected routes
+		protected.GET("/cart", cartController.GetCart)
+		protected.POST("/cart/items", cartController.AddItem)
+		protected.PUT("/cart/items/:itemId", cartController.UpdateItem)
+		protected.DELETE("/cart/items/:itemId", cartController.RemoveItem)
+		protected.POST("/cart/checkout", cartController.Checkout)
 	}
 
 	// Porta
