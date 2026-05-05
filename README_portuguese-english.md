@@ -434,7 +434,6 @@ Feito com ❤️, raiva e muito café para aprender e mostrar como penso arquite
 
 
 
-
 ## 🗺️ Roadmap
 
 ### ✅ Concluído
@@ -448,14 +447,28 @@ Feito com ❤️, raiva e muito café para aprender e mostrar como penso arquite
 - [x] Migrations automáticas com golang-migrate
 - [x] Testes unitários e de integração
 - [x] Docker + deploy no Render
-- [x] Carrinho de compras persistido no banco
+- [x] Carrinho de compras com persistência no banco
+- [x] Upload de imagem para produtos (Cloudflare R2)
 
-### 🔜 Próximos passos
+### 🔜 Features
 - [ ] Verificação de estoque no CreateOrder
 - [ ] Webhook do PagSeguro (atualizar status do pedido para `paid`)
 - [ ] Guard de role `admin` nas rotas de criação/deleção de produtos
-- [ ] Rate limiting nas rotas públicas (signup, login)
-- [ ] Upload de imagem para produtos (S3 ou Cloudflare R2)
-- [ ] Logs estruturados com `slog` ou `zap`
-- [ ] Unificação de `ConnectDB`/`SetupDB`
-- [ ] Testes para controllers e repositories
+- [ ] Cache de produtos com Redis
+- [ ] Compressão gzip nas respostas
+
+### 🔒 Segurança
+- [ ] Rate limiting nas rotas públicas (signup, login, refresh)
+- [ ] CORS configurado corretamente
+- [ ] Helmet headers (X-Content-Type-Options, X-Frame-Options, etc.)
+- [ ] Validação de input robusta com `go-playground/validator`
+- [ ] Sanitização de input
+- [ ] Expiração automática de refresh tokens no banco
+
+### 📊 Observabilidade e Performance
+- [ ] Logs estruturados com `slog`
+- [ ] Request ID por requisição
+- [ ] Métricas com Prometheus (`/metrics`)
+- [ ] Health check detalhado (banco, R2, etc.)
+- [ ] Índices no banco (`user_id` em products, `token` em refresh_tokens)
+- [ ] Connection pool configurável via env
