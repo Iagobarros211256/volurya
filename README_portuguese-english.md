@@ -366,6 +366,11 @@ curl -X GET https://volurya.onrender.com/api/products \
 | PUT | /api/products/:productId | Atualiza produto | Sim |
 | DELETE | /api/products/:productId | Deleta produto (verifica ownership) | Sim |
 | GET | /ping | Healthcheck | Não |
+| GET | /api/cart | Ver carrinho atual | Sim |
+| POST | /api/cart/items | Adicionar produto ao carrinho | Sim |
+| PUT | /api/cart/items/:itemId | Atualizar quantidade do item | Sim |
+| DELETE | /api/cart/items/:itemId | Remover item do carrinho | Sim |
+| POST | /api/cart/checkout | Finalizar compra e gerar links de pagamento | Sim |
 
 ## 🧪 Testes
 
@@ -402,10 +407,14 @@ Inclui:
 - Banco real nos testes de integração
 - Ownership em produtos (user_id)
 - Docker como ambiente padrão
+- Carrinho persistido no banco (persiste entre sessões)
+- Upsert no AddItem (adicionar produto já no carrinho incrementa quantidade)
+- Ownership enforcement nos itens do carrinho
+- Carrinho limpo automaticamente após checkout
 
 ## ❄️ Status Atual
 
-Backend em evolução ativa — refresh token, migrations e configuração via env implementados.
+Backend em evolução ativa — carrinho de compras, refresh token, migrations e configuração via env implementados.
 
 ## 🧠 Modelo Mental Rápido
 Signup/Login  → access_token (15min) + refresh_token (7 dias)
@@ -439,6 +448,7 @@ Feito com ❤️, raiva e muito café para aprender e mostrar como penso arquite
 - [x] Migrations automáticas com golang-migrate
 - [x] Testes unitários e de integração
 - [x] Docker + deploy no Render
+- [x] Carrinho de compras persistido no banco
 
 ### 🔜 Próximos passos
 - [ ] Verificação de estoque no CreateOrder
@@ -446,7 +456,6 @@ Feito com ❤️, raiva e muito café para aprender e mostrar como penso arquite
 - [ ] Guard de role `admin` nas rotas de criação/deleção de produtos
 - [ ] Rate limiting nas rotas públicas (signup, login)
 - [ ] Upload de imagem para produtos (S3 ou Cloudflare R2)
-- [ ] Carrinho de compras (múltiplos itens antes do checkout)
 - [ ] Logs estruturados com `slog` ou `zap`
 - [ ] Unificação de `ConnectDB`/`SetupDB`
 - [ ] Testes para controllers e repositories
