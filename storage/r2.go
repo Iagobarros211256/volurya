@@ -1,8 +1,5 @@
 package storage
 
-
-package storage
-
 import (
 	"context"
 	"fmt"
@@ -34,10 +31,11 @@ func NewR2Storage() (*R2Storage, error) {
 		return nil, fmt.Errorf("missing R2 environment variables")
 	}
 
+	endpoint := fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountID)
 	client := s3.New(s3.Options{
-		BaseEndpoint: aws.String(fmt.Sprintf("https://%s.r2.cloudflarestorage.com", accountID)),
-		Region:       "auto",
-		Credentials:  credentials.NewStaticCredentialsProvider(accessKey, secretKey, ""),
+		EndpointResolver: s3.EndpointResolverFromURL(endpoint),
+		Region:           "auto",
+		Credentials:      credentials.NewStaticCredentialsProvider(accessKey, secretKey, ""),
 	})
 
 	return &R2Storage{
