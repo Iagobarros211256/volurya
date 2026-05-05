@@ -29,8 +29,8 @@ func (pr *ProductRepository) GetProducts(limit int, cursor *int) ([]models.Produ
 	}
 
 	query := `
-		SELECT id, user_id, name, description, price, stock
-		FROM products
+		SELECT id, user_id, name, description, price, stock, COALESCE(image_url, '') 
+        FROM products
 	`
 	args := []any{}
 	paramIndex := 1
@@ -56,11 +56,12 @@ func (pr *ProductRepository) GetProducts(limit int, cursor *int) ([]models.Produ
 		var p models.Product
 		if err := rows.Scan(
 			&p.ID,
-			&p.UserID, // ← adicionado (já tem no model)
+			&p.UserID,
 			&p.Name,
 			&p.Description,
 			&p.Price,
 			&p.Stock,
+			&p.ImageURL,
 		); err != nil {
 			return nil, false, fmt.Errorf("scan failed: %w", err)
 		}
@@ -98,7 +99,7 @@ func (pr *ProductRepository) CreateProduct(product models.Product, userID int) (
 func (pr *ProductRepository) GetProductById(id int) (*models.Product, error) {
 	var p models.Product
 	err := pr.connection.QueryRow(
-		"SELECT id, user_id, name, description, price, stock FROM products WHERE id = $1",
+		"SELECT id, user_id, name, description, price, stock, COALESCE(image_url, '') FROM products WHERE id = $1",
 		id,
 	).Scan(
 		&p.ID,
@@ -107,6 +108,7 @@ func (pr *ProductRepository) GetProductById(id int) (*models.Product, error) {
 		&p.Description,
 		&p.Price,
 		&p.Stock,
+		&p.ImageURL,
 	)
 
 	if err == sql.ErrNoRows {
@@ -123,7 +125,7 @@ func (pr *ProductRepository) GetProductById(id int) (*models.Product, error) {
 func (pr *ProductRepository) UpdateProduct(id int, name string, description string, price float64, stock int) (*models.Product, error) {
 	var p models.Product
 	err := pr.connection.QueryRow(
-		"UPDATE products SET name = $1, description = $2, price = $3, stock = $4 WHERE id = $5 RETURNING id, user_id, name, description, price, stock",
+		"UPDATE products SET name = $1, description = $2, price = $3, stock = $4 WHERE id = $5 RETURNING id, user_id, name, description, price, stock, COALESCE(image_url, '')",
 		name, description, price, stock, id,
 	).Scan(
 		&p.ID,
@@ -132,6 +134,7 @@ func (pr *ProductRepository) UpdateProduct(id int, name string, description stri
 		&p.Description,
 		&p.Price,
 		&p.Stock,
+		&p.ImageURL,
 	)
 
 	if err == sql.ErrNoRows {
@@ -160,4 +163,29 @@ func (pr *ProductRepository) Delete(id int) error {
 	}
 
 	return nil
+}
+
+func (pr *ProductRepository) UpdateImageURL(productID int, imageURL string) (*models.Product, error) {
+	var p models.Product
+	err := pr.connection.QueryRow(
+		"UPDATE products SET image_url = $1 WHERE id = $2 RETURNING id, user_id, name, description, price, stock, COALESCE(image_url, '')",
+		imageURL, productID,
+	).Scan(
+		&p.ID,
+		&p.UserID,
+		&p.Name,
+		&p.Description,
+		&p.Price,
+		&p.Stock,
+		&p.ImageURL,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, ErrProductNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("update image url failed: %w", err)
+	}
+
+	return &p, nil
 }
