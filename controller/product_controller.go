@@ -2,6 +2,7 @@ package controller
 
 import (
 	"api/models"
+	"api/storage"
 	"api/usecase"
 	"database/sql"
 	"errors"
@@ -13,11 +14,13 @@ import (
 
 type productController struct {
 	productUseCase *usecase.ProductUsecase
+	r2             *storage.R2Storage
 }
 
-func NewProductController(usecase *usecase.ProductUsecase) *productController {
+func NewProductController(usecase *usecase.ProductUsecase, r2 *storage.R2Storage) *productController {
 	return &productController{
 		productUseCase: usecase,
+		r2:             r2,
 	}
 }
 
@@ -191,4 +194,29 @@ func (p *productController) Delete(ctx *gin.Context) {
 	}
 
 	ctx.Status(http.StatusNoContent) // 204
+}
+
+func (p *productController) UploadImage(ctx *gin.Context) {
+	userID := ctx.GetInt("user_id")
+
+	productId, err := strconv.Atoi(ctx.Param("productId"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, models.Response{Message: "Id do produto precisa ser um numero"})
+		return
+	}
+
+	file, header, err := ctx.Request.FormFile("image")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "image file is required"})
+		return
+	}
+	defer file.Close()
+
+	product, err := p.productUseCase.UploadImage(userID, productId, file, header, p.r2)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, product)
 }

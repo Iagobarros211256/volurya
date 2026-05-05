@@ -3,7 +3,9 @@ package usecase
 import (
 	"api/models"
 	"api/repository"
+	"api/storage"
 	"errors"
+	"mime/multipart"
 	"strconv"
 )
 
@@ -119,4 +121,32 @@ func (pu *ProductUsecase) Delete(userID int, productID int) error {
 	// if userRole == "admin" { ok }
 
 	return pu.repo.Delete(productID)
+}
+
+func (pu *ProductUsecase) UploadImage(userID, productID int, file multipart.File, header *multipart.FileHeader, store *storage.R2Storage) (*models.Product, error) {
+	// Verifica se o produto existe e pertence ao usuário
+	product, err := pu.repo.GetProductById(productID)
+	if err != nil {
+		return nil, err
+	}
+	if product == nil {
+		return nil, errors.New("product not found")
+	}
+	if product.UserID != userID {
+		return nil, errors.New("forbidden: you do not own this product")
+	}
+
+	// Faz upload para o R2
+	imageURL, err := store.UploadImage(file, header)
+	if err != nil {
+		return nil, err
+	}
+
+	// Atualiza o produto no banco
+	updated, err := pu.repo.UpdateImageURL(productID, imageURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return updated, nil
 }
