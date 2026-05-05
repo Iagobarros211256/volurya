@@ -472,3 +472,15 @@ Feito com ❤️, raiva e muito café para aprender e mostrar como penso arquite
 - [ ] Health check detalhado (banco, R2, etc.)
 - [ ] Índices no banco (`user_id` em products, `token` em refresh_tokens)
 - [ ] Connection pool configurável via env
+
+### 🔧 Concorrência e Performance (Go avançado)
+- [ ] Worker pool para processamento de imagens (goroutines + channels)
+- [ ] Pipeline de processamento de imagem assíncrono (validar → redimensionar → comprimir → salvar no R2)
+- [ ] SSE (Server-Sent Events) para notificações em tempo real ao frontend
+
+### 💡 Por que essas features?
+Essas três implementações foram escolhidas para demonstrar o que Go faz melhor:
+- **Worker pool** — controle fino de concorrência com goroutines e channels
+- **Pipeline** — padrão produtor/consumidor encadeado, idiomático em Go
+- **SSE** — Go lida naturalmente com milhares de conexões longas e concorrentes
+Juntas formam um sistema de processamento de imagem assíncrono profissional.
