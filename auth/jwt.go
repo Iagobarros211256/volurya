@@ -2,7 +2,7 @@ package auth
 
 import (
 	"errors"
-	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -14,7 +14,8 @@ var secret []byte
 func init() {
 	secretStr := os.Getenv("JWT_SECRET")
 	if secretStr == "" {
-		log.Fatal("JWT_SECRET environment variable is required")
+		slog.Error("JWT_SECRET environment variable is required")
+		os.Exit(1)
 	}
 	secret = []byte(secretStr)
 }
@@ -53,16 +54,16 @@ func ValidateToken(tokenString string) (*Claims, error) {
 	})
 
 	if err != nil {
-		log.Printf("JWT parse failed: %v", err)
+		slog.Error("JWT parse failed", "error", err)
 		return nil, err
 	}
 
 	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
-		log.Printf("JWT valid - user_id: %d, role: %s", claims.UserID, claims.Role)
+		slog.Debug("JWT valid", "user_id", claims.UserID, "role", claims.Role)
 		return claims, nil
 	}
 
-	log.Printf("JWT invalid claims or expired")
+	slog.Warn("JWT invalid claims or expired")
 	return nil, errors.New("token invalid or expired")
 }
 

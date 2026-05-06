@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -20,7 +20,7 @@ var (
 func ConnectDB() (*sql.DB, error) {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		log.Println("DATABASE_URL not set — using fallback")
+		slog.Warn("DATABASE_URL not set — using fallback")
 		dsn = buildFallbackDSN()
 	}
 
@@ -44,11 +44,11 @@ func ConnectDB() (*sql.DB, error) {
 	for i := 1; i <= maxRetries; i++ {
 		err = db.Ping()
 		if err == nil {
-			log.Printf("Database connected successfully")
+			slog.Info("Database connected successfully")
 			return db, nil
 		}
 
-		log.Printf("Ping attempt %d/%d failed: %v", i, maxRetries, err)
+		slog.Warn("Ping attempt failed", "attempt", i, "max", maxRetries, "error", err)
 
 		sleepTime := time.Duration(i+1) * time.Second
 		if sleepTime > 10*time.Second {

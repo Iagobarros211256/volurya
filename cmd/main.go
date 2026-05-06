@@ -4,11 +4,14 @@ import (
 	"api/auth"
 	"api/controller"
 	"api/db"
+	"api/logger"
+	"api/middleware"
 	"api/repository"
 	"api/storage"
 	"api/usecase"
 	"context"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -20,8 +23,12 @@ import (
 
 func main() {
 
+	logger.Init()
+
 	gin.SetMode(gin.ReleaseMode)
-	router := gin.Default()
+	router := gin.New()
+	router.Use(gin.Recovery())
+	router.Use(middleware.RequestLogger())
 
 	router.LoadHTMLGlob("views/templates/*")
 	router.Static("/static", "./views/static")
@@ -56,18 +63,21 @@ func main() {
 	// DB
 	dbConnection, err := db.ConnectDB()
 	if err != nil {
-		log.Fatalf("failed to connect to database: %v", err)
+		slog.Error("failed to connect to database", "error", err)
+		os.Exit(1)
 	}
 
 	// Storage R2
 	r2Storage, err := storage.NewR2Storage()
 	if err != nil {
-		log.Fatalf("failed to initialize R2 storage: %v", err)
+		slog.Error("failed to initialize R2 storage", "error", err)
+		os.Exit(1)
 	}
 
 	// Migrations
 	if err := db.RunMigrations(dbConnection); err != nil {
-		log.Fatalf("failed to run migrations: %v", err)
+		slog.Error("failed to run migrations", "error", err)
+		os.Exit(1)
 	}
 
 	// Repositories
@@ -134,7 +144,7 @@ func main() {
 
 	// 👇 Rodar servidor em goroutine
 	go func() {
-		log.Println("API Volurya rodando na porta", port)
+		slog.Info("API Volurya rodando na porta", "port", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("erro ao iniciar servidor: %v", err)
 		}
@@ -145,15 +155,16 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	<-quit
-	log.Println("Desligando servidor...")
+	slog.Info("Desligando servidor...")
 
 	// 👇 Timeout pra finalizar requisições
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal("Erro no shutdown:", err)
+		slog.Error("Erro no shutdown", "error", err)
+		os.Exit(1)
 	}
 
-	log.Println("Servidor finalizado corretamente")
+	slog.Info("Servidor finalizado corretamente")
 }

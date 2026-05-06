@@ -24,6 +24,7 @@ services:
     volumes:
       - ./:/go/src/app   # monta o código do host
     environment:
+      APP_ENV: ${APP_ENV}
       ACCESS_TOKEN_DURATION_MINUTES: ${ACCESS_TOKEN_DURATION_MINUTES}
       REFRESH_TOKEN_DURATION_DAYS: ${REFRESH_TOKEN_DURATION_DAYS}
       PAGSEGURO_EMAIL: iagobarrosgomes2112@gmail.com

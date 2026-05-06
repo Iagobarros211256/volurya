@@ -3,7 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -47,6 +47,6 @@ func RunMigrations(db *sql.DB) error {
 		return fmt.Errorf("migration failed: %w", err)
 	}
 
-	log.Println("Migrations applied successfully")
+	slog.Info("Migrations applied successfully")
 	return nil
 }
