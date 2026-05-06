@@ -449,6 +449,9 @@ Feito com ❤️, raiva e muito café para aprender e mostrar como penso arquite
 - [x] Docker + deploy no Render
 - [x] Carrinho de compras com persistência no banco
 - [x] Upload de imagem para produtos (Cloudflare R2)
+- [x] Logs estruturados com slog (JSON em produção, texto em desenvolvimento)
+- [x] Request ID por requisição
+- [x] user_id nos logs de rotas autenticadas
 
 ### 🔜 Features
 - [ ] Verificação de estoque no CreateOrder
@@ -466,8 +469,7 @@ Feito com ❤️, raiva e muito café para aprender e mostrar como penso arquite
 - [ ] Expiração automática de refresh tokens no banco
 
 ### 📊 Observabilidade e Performance
-- [ ] Logs estruturados com `slog`
-- [ ] Request ID por requisição
+
 - [ ] Métricas com Prometheus (`/metrics`)
 - [ ] Health check detalhado (banco, R2, etc.)
 - [ ] Índices no banco (`user_id` em products, `token` em refresh_tokens)
