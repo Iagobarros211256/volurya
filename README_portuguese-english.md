@@ -486,3 +486,16 @@ Essas três implementações foram escolhidas para demonstrar o que Go faz melho
 - **Pipeline** — padrão produtor/consumidor encadeado, idiomático em Go
 - **SSE** — Go lida naturalmente com milhares de conexões longas e concorrentes
 Juntas formam um sistema de processamento de imagem assíncrono profissional.
+
+
+### 🎨 Frontend
+- [ ] Página do carrinho visual com listagem de itens e total
+- [ ] Botão de logout no navbar quando usuário estiver logado
+- [ ] Badge de quantidade no ícone do carrinho no navbar
+- [ ] Redirecionamento inteligente — login redireciona de volta para a página anterior
+- [ ] Usar `image_url` real do produto na store (hoje está hardcoded)
+- [ ] Skeleton loading nos cards de produto
+- [ ] Filtro e busca de produtos na store
+- [ ] Página de confirmação de pedido após checkout
+- [ ] Página 404 customizada com identidade visual da banda
+- [ ] Página "About" com bio completa e galeria de fotos
