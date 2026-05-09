@@ -1,6 +1,4 @@
-const API_BASE = window.location.hostname.includes('localhost')
-  ? 'http://localhost:8080/api'
-  : 'https://volurya.onrender.com/api';
+
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Redireciona se não estiver logado
