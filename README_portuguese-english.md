@@ -490,6 +490,7 @@ Juntas formam um sistema de processamento de imagem assíncrono profissional.
 
 ### 🎨 Frontend
 - [x] Página do carrinho visual com listagem de itens e total
+- [x] Página "About" com bio completa e galeria de fotos com lightbox
 - [ ] Botão de logout no navbar quando usuário estiver logado
 - [ ] Badge de quantidade no ícone do carrinho no navbar
 - [ ] Redirecionamento inteligente — login redireciona de volta para a página anterior
@@ -498,4 +499,3 @@ Juntas formam um sistema de processamento de imagem assíncrono profissional.
 - [ ] Filtro e busca de produtos na store
 - [ ] Página de confirmação de pedido após checkout
 - [ ] Página 404 customizada com identidade visual da banda
-- [ ] Página "About" com bio completa e galeria de fotos

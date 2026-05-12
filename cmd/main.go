@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -63,6 +64,8 @@ func main() {
 	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "pong"})
 	})
+
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	router.HEAD("/", func(c *gin.Context) {
 		c.Status(200)

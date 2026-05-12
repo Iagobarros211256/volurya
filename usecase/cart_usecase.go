@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"api/metrics"
 	"api/models"
 	"api/repository"
 	"errors"
@@ -61,6 +62,8 @@ func (uc *CartUsecase) AddItem(userID, productID, quantity int) (*models.CartIte
 	if err != nil {
 		return nil, err
 	}
+
+	metrics.CartItemsAdded.Inc()
 
 	item.Product = product
 	return item, nil

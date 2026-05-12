@@ -3,6 +3,7 @@ package usecase
 import (
 	"api/auth"
 	"api/config"
+	"api/metrics"
 	"api/models"
 	"api/repository"
 	"errors"
@@ -57,6 +58,8 @@ func (a *AuthUsecase) Signup(email, password string) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
+
+	metrics.UsersTotal.Inc()
 
 	accessToken, err := auth.GenerateToken(id, user.Role, config.GetAccessTokenDuration())
 	if err != nil {

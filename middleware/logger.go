@@ -2,9 +2,11 @@ package middleware
 
 import (
 	"api/logger"
+	"api/metrics"
 	"fmt"
 	"log/slog"
 	"math/rand"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,18 +16,15 @@ func RequestLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 
-		// Gera request ID único
 		requestID := fmt.Sprintf("%08x", rand.Uint32())
 		c.Set("request_id", requestID)
 		c.Header("X-Request-ID", requestID)
 
-		// Processa a requisição
 		c.Next()
 
 		duration := time.Since(start)
 		status := c.Writer.Status()
 
-		// Nível do log baseado no status
 		level := slog.LevelInfo
 		if status >= 500 {
 			level = slog.LevelError
@@ -33,7 +32,6 @@ func RequestLogger() gin.HandlerFunc {
 			level = slog.LevelWarn
 		}
 
-		// Pega user_id se autenticado
 		userID, _ := c.Get("user_id")
 
 		logger.Log.Log(
@@ -48,5 +46,17 @@ func RequestLogger() gin.HandlerFunc {
 			"ip", c.ClientIP(),
 			"user_id", userID,
 		)
+
+		// Métricas Prometheus
+		metrics.HttpRequestsTotal.WithLabelValues(
+			c.Request.Method,
+			c.FullPath(),
+			strconv.Itoa(status),
+		).Inc()
+
+		metrics.HttpRequestDuration.WithLabelValues(
+			c.Request.Method,
+			c.FullPath(),
+		).Observe(duration.Seconds())
 	}
 }

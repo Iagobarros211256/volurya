@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"api/metrics"
 	"api/models"
 	"api/repository"
 	"bytes"
@@ -61,6 +62,8 @@ func (ou *OrderUsecase) CreateOrder(userID int, productID int, quantity int) (st
 	if err != nil {
 		return "", fmt.Errorf("falha ao criar ordem: %w", err)
 	}
+
+	metrics.OrdersTotal.Inc()
 
 	// Configuração PagSeguro
 	isSandbox := os.Getenv("PAGSEGURO_SANDBOX") != "false"

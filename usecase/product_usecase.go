@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"api/metrics"
 	"api/models"
 	"api/repository"
 	"api/storage"
@@ -141,6 +142,8 @@ func (pu *ProductUsecase) UploadImage(userID, productID int, file multipart.File
 	if err != nil {
 		return nil, err
 	}
+
+	metrics.ImageUploadsTotal.Inc()
 
 	// Atualiza o produto no banco
 	updated, err := pu.repo.UpdateImageURL(productID, imageURL)
