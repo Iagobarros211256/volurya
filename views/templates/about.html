@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>About - VOLURYA</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Russo+One&display=swap">
+  <link rel="stylesheet" href="/static/css/styles.css">
+
+  <style>
+    .gallery-img {
+      cursor: pointer;
+      transition: transform 0.2s, filter 0.2s;
+      filter: brightness(0.85);
+    }
+    .gallery-img:hover {
+      transform: scale(1.03);
+      filter: brightness(1);
+    }
+    .lightbox-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.92);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+    }
+    .lightbox-overlay.active {
+      display: flex;
+    }
+    .lightbox-overlay img {
+      max-width: 90vw;
+      max-height: 90vh;
+      border: 2px solid #ff0000;
+      border-radius: 4px;
+    }
+    .lightbox-close {
+      position: absolute;
+      top: 20px; right: 30px;
+      font-size: 40px;
+      color: #ff0000;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .lightbox-prev, .lightbox-next {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 40px;
+      color: #ff0000;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0 20px;
+    }
+    .lightbox-prev { left: 10px; }
+    .lightbox-next { right: 10px; }
+    .member-card {
+      border: 1px solid #ff000033;
+      transition: border-color 0.2s;
+    }
+    .member-card:hover {
+      border-color: #ff0000;
+    }
+    .section-title {
+      font-family: 'Russo One', sans-serif;
+      text-shadow: 0 0 10px #ff0000;
+    }
+  </style>
+</head>
+<body class="bg-dark text-light">
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-dark bg-dark">
+    <div class="container-fluid">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample01" aria-controls="navbarsExample01" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarsExample01">
+        <ul class="navbar-nav me-auto mb-2">
+          <li class="nav-item"><a class="btn btn-outline-danger btn-sm my-2 nav-link" href="/">HOME</a></li>
+          <li class="nav-item"><a class="btn btn-outline-danger btn-sm my-2 nav-link active" href="/about">ABOUT</a></li>
+          <li class="nav-item"><a class="btn btn-outline-danger btn-sm my-2 nav-link" href="/#musicsection">MUSIC</a></li>
+          <li class="nav-item"><a class="btn btn-outline-danger btn-sm my-2 nav-link" href="/#socialsection">SOCIAL</a></li>
+          <li class="nav-item"><a class="btn btn-outline-danger btn-sm my-2 nav-link" href="/store">STORE</a></li>
+          <li class="nav-item"><a class="btn btn-outline-primary btn-sm my-2 nav-link" href="/login">Entrar</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero d-flex justify-content-center align-items-center bg-dark">
+    <img src="/static/imagens/VOLURYALOGOVAZADA.png" class="hero-logo">
+  </section>
+
+  <!-- Bio PT -->
+  <div class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 text-center">
+        <h2 class="text-danger section-title mb-4">SOBRE A BANDA</h2>
+        <p class="text-light lead">
+          A VOLURYA é uma banda de metal progressivo formada em Fortaleza, Brasil. 
+          Com influências que atravessam o hardcore, o groove e a música brasileira, 
+          o grupo constrói um som único — pesado, técnico e profundamente enraizado 
+          na cultura nordestina.
+        </p>
+        <p class="text-light">
+          Fundada em [ANO], a banda rapidamente se destacou na cena local com apresentações 
+          intensas e uma proposta musical que desafia fronteiras. Com [N] anos de estrada, 
+          [N] álbuns e centenas de shows pelo Brasil, a VOLURYA continua evoluindo sem 
+          abrir mão de sua identidade.
+        </p>
+        <p class="text-light">
+          O nome VOLURYA representa [SIGNIFICADO DO NOME]. Cada música carrega uma história, 
+          cada riff carrega uma intenção. A banda acredita que o metal é mais do que um gênero 
+          — é uma forma de vida.
+        </p>
+
+        <hr style="border-color: #ff000033; margin: 2rem 0;">
+
+        <h2 class="text-danger section-title mb-4">ABOUT THE BAND</h2>
+        <p class="text-light lead">
+          VOLURYA is a progressive metal band from Fortaleza, Brazil. 
+          Drawing from hardcore, groove and Brazilian music, the band 
+          crafts a unique sound — heavy, technical and deeply rooted 
+          in northeastern Brazilian culture.
+        </p>
+        <p class="text-light">
+          Founded in [YEAR], the band quickly stood out in the local scene 
+          with intense live performances and a musical vision that defies boundaries. 
+          With [N] years on the road, [N] albums and hundreds of shows across Brazil, 
+          VOLURYA keeps evolving without losing its identity.
+        </p>
+        <p class="text-light">
+          The name VOLURYA represents [NAME MEANING]. Every song carries a story, 
+          every riff carries an intention. The band believes metal is more than a genre 
+          — it's a way of life.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Membros -->
+  <div class="container py-4">
+    <h2 class="text-danger section-title text-center mb-5">THE BAND</h2>
+    <div class="row row-cols-2 row-cols-md-4 g-4 text-center">
+
+      <div class="col">
+        <div class="member-card rounded p-3 bg-dark">
+          <img src="/static/imagens/VOLURYA - CENA ROCK-29-modified.png" class="rounded-circle img-fluid mb-3" style="max-width: 150px;">
+          <h5 class="text-white">Carlos Heitor</h5>
+          <p class="text-danger small mb-1">Guitars & Back Vocals</p>
+          <p class="text-muted small">[Bio curta do membro]</p>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="member-card rounded p-3 bg-dark">
+          <img src="/static/imagens/VOLURYA - CENA ROCK-36 (1)-modified.png" class="rounded-circle img-fluid mb-3" style="max-width: 150px;">
+          <h5 class="text-white">Iago Barros</h5>
+          <p class="text-danger small mb-1">Drums & Percussion</p>
+          <p class="text-muted small">[Bio curta do membro]</p>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="member-card rounded p-3 bg-dark">
+          <img src="/static/imagens/CENAROCKINES1-modified.png" class="rounded-circle img-fluid mb-3" style="max-width: 150px;">
+          <h5 class="text-white">Ines Ferreira</h5>
+          <p class="text-danger small mb-1">Lead Vocals</p>
+          <p class="text-muted small">[Bio curta do membro]</p>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="member-card rounded p-3 bg-dark">
+          <img src="/static/imagens/VOLURYA - CENA ROCK-14-modified.png" class="rounded-circle img-fluid mb-3" style="max-width: 150px;">
+          <h5 class="text-white">Italo Ramon</h5>
+          <p class="text-danger small mb-1">Bass</p>
+          <p class="text-muted small">[Bio curta do membro]</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Galeria -->
+  <div class="container py-5">
+    <h2 class="text-danger section-title text-center mb-5">GALERIA / GALLERY</h2>
+    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3" id="gallery">
+
+      <div class="col">
+        <img src="/static/imagens/VOLURYACENAROCK.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(0)">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/VOLURYAAKITEMROCK.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(1)">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/CENAROCKINES1.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(2)">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/CENAROCKINES2.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(3)">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/HEITORGUITAR1.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(4)">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/dincifestvolruryabanda.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(5)">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/VOLURYAESTUDIO.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(6)">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/VOLURYACASARAO.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(7)">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/VOLURYA - CENA ROCK-3.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(8)">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/VOLURYA - CENA ROCK-13.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(9)">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/VOLURYA - CENA ROCK-18.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(10)">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/VOLURYA - CENA ROCK-24.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(11)">
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Lightbox -->
+  <div class="lightbox-overlay" id="lightbox" onclick="closeLightboxOnOverlay(event)">
+    <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+    <button class="lightbox-prev" onclick="changeLightbox(-1)">&#8249;</button>
+    <img id="lightbox-img" src="">
+    <button class="lightbox-next" onclick="changeLightbox(1)">&#8250;</button>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-dark py-5 text-center mt-5">
+    <div class="container">
+      <div class="mb-4">
+        <img src="/static/imagens/VOLURYALOGOVAZADA.png" alt="Volurya" style="max-width: 120px; opacity: 0.9;">
+      </div>
+      <div class="mb-4">
+        <a href="#" class="fa fa-facebook mx-2" style="font-size: 24px; color: #aaa; text-decoration: none;"></a>
+        <a href="#" class="fa fa-instagram mx-2" style="font-size: 24px; color: #aaa; text-decoration: none;"></a>
+        <a href="#" class="fa fa-youtube mx-2" style="font-size: 24px; color: #aaa; text-decoration: none;"></a>
+        <a href="#" class="fa fa-spotify mx-2" style="font-size: 24px; color: #aaa; text-decoration: none;"></a>
+      </div>
+      <hr style="border-color: #333; max-width: 400px; margin: 0 auto 1rem;">
+      <p class="text-danger mb-0 small">
+        VOLURYA © 2026 — Fortaleza, Brasil
+        <br>
+        <span style="font-size: 11px; color: #ff4444;">Made with ❤️ and lots of distortion</span>
+      </p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const galleryImages = [
+      '/static/imagens/VOLURYACENAROCK.jpg',
+      '/static/imagens/VOLURYAAKITEMROCK.jpg',
+      '/static/imagens/CENAROCKINES1.jpg',
+      '/static/imagens/CENAROCKINES2.jpg',
+      '/static/imagens/HEITORGUITAR1.jpg',
+      '/static/imagens/dincifestvolruryabanda.jpg',
+      '/static/imagens/VOLURYAESTUDIO.jpg',
+      '/static/imagens/VOLURYACASARAO.jpg',
+      '/static/imagens/VOLURYA - CENA ROCK-3.jpg',
+      '/static/imagens/VOLURYA - CENA ROCK-13.jpg',
+      '/static/imagens/VOLURYA - CENA ROCK-18.jpg',
+      '/static/imagens/VOLURYA - CENA ROCK-24.jpg',
+    ];
+
+    let currentIndex = 0;
+
+    function openLightbox(index) {
+      currentIndex = index;
+      document.getElementById('lightbox-img').src = galleryImages[index];
+      document.getElementById('lightbox').classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    function closeLightboxOnOverlay(event) {
+      if (event.target === document.getElementById('lightbox')) {
+        closeLightbox();
+      }
+    }
+
+    function changeLightbox(direction) {
+      currentIndex = (currentIndex + direction + galleryImages.length) % galleryImages.length;
+      document.getElementById('lightbox-img').src = galleryImages[currentIndex];
+    }
+
+    // Fechar com ESC
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeLightbox();
+      if (e.key === 'ArrowLeft') changeLightbox(-1);
+      if (e.key === 'ArrowRight') changeLightbox(1);
+    });
+  </script>
+</body>
+</html>
