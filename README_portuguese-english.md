@@ -489,7 +489,7 @@ Juntas formam um sistema de processamento de imagem assíncrono profissional.
 
 
 ### 🎨 Frontend
-- [ ] Página do carrinho visual com listagem de itens e total
+- [x] Página do carrinho visual com listagem de itens e total
 - [ ] Botão de logout no navbar quando usuário estiver logado
 - [ ] Badge de quantidade no ícone do carrinho no navbar
 - [ ] Redirecionamento inteligente — login redireciona de volta para a página anterior

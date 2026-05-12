@@ -43,6 +43,10 @@ func main() {
 		})
 	})
 
+	router.GET("/about", func(c *gin.Context) {
+		c.HTML(200, "about.html", gin.H{})
+	})
+
 	router.GET("/cart", func(c *gin.Context) {
 		c.HTML(200, "cart.html", gin.H{})
 	})
