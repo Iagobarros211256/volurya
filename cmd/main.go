@@ -4,6 +4,7 @@ import (
 	"api/auth"
 	"api/controller"
 	"api/db"
+	"api/jobs"
 	"api/logger"
 	"api/middleware"
 	"api/repository"
@@ -30,6 +31,10 @@ func main() {
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(middleware.RequestLogger())
+
+	// Iniciar worker pool (4 workers)
+	imageProcessor := jobs.NewImageProcessor(4)
+	defer imageProcessor.Shutdown()
 
 	router.LoadHTMLGlob("views/templates/*")
 	router.Static("/static", "./views/static")
@@ -99,13 +104,18 @@ func main() {
 	cartRepository := repository.NewCartRepository(dbConnection)
 
 	// Usecases
-	productUseCase := usecase.NewProductUsecase(productRepository)
+	productUsecase := usecase.NewProductUsecase(productRepository)
 	authUseCase := usecase.NewAuthUsecase(userRepository, refreshTokenRepository)
 	orderUsecase := usecase.NewOrderUsecase(orderRepository, productRepository)
 	cartUsecase := usecase.NewCartUsecase(cartRepository, productRepository)
 
 	// Controllers
-	productController := controller.NewProductController(productUseCase, r2Storage)
+	productController := controller.NewProductController(
+		productUsecase,
+		productRepository,
+		r2Storage,
+		imageProcessor, // NOVO - passe o processor aqui
+	)
 	authController := controller.NewAuthController(authUseCase)
 	orderController := controller.NewOrderController(orderUsecase)
 	cartController := controller.NewCartController(cartUsecase, orderUsecase)

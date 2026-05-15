@@ -12,6 +12,21 @@ Personal learning project / showcase built to practice real-world backend concep
 ![Badge](https://img.shields.io/badge/JWT-Authentication-blue)
 ![Badge](https://img.shields.io/badge/Deploy-Render-success?logo=render&logoColor=white)
 
+
+# Documentação Volurya API
+
+## Visão Geral
+
+- **[PRD](./volurya-prd.md)** — Requisitos de produto e escopo
+- **[Tech Spec](./volurya-tech-spec.md)** — Arquitetura técnica e decisões
+- **[ADRs](./architecture/)** — Architecture Decision Records
+
+## ADRs
+
+- [ADR 001 — Clean Architecture](./architecture/adr-001-clean-architecture.md)
+- [ADR 002 — JWT com Refresh Token Rotation](./architecture/adr-002-jwt-refresh-rotation.md)
+- [ADR 003 — Cloudflare R2 para Storage](./architecture/adr-003-cloudflare-r2.md)
+
 ## 🎯 Project Goals
 
 - Practice **Clean Architecture** (simplified)
@@ -469,11 +484,15 @@ Feito com ❤️, raiva e muito café para aprender e mostrar como penso arquite
 - [ ] Expiração automática de refresh tokens no banco
 
 ### 📊 Observabilidade e Performance
-
-- [ ] Métricas com Prometheus (`/metrics`)
-- [ ] Health check detalhado (banco, R2, etc.)
-- [ ] Índices no banco (`user_id` em products, `token` em refresh_tokens)
+- [x] Logs estruturados com `slog`
+- [x] Request ID por requisição
+- [x] Métricas com Prometheus (`/metrics`)
+- [ ] Índices no banco (`token` em refresh_tokens, `user_id` em products)
+- [ ] Compressão gzip nas respostas
 - [ ] Connection pool configurável via env
+- [ ] Health check detalhado (banco, R2, etc.)
+- [ ] Cache de produtos com Redis
+
 
 ### 🔧 Concorrência e Performance (Go avançado)
 - [ ] Worker pool para processamento de imagens (goroutines + channels)
@@ -499,3 +518,11 @@ Juntas formam um sistema de processamento de imagem assíncrono profissional.
 - [ ] Filtro e busca de produtos na store
 - [ ] Página de confirmação de pedido após checkout
 - [ ] Página 404 customizada com identidade visual da banda
+
+
+
+## 📚 Documentação
+
+- [PRD](./docs/volurya-prd.md) — Requisitos e visão de produto
+- [Tech Spec](./docs/volurya-tech-spec.md) — Arquitetura e decisões técnicas
+- [ADRs](./docs/architecture/) — Architecture Decision Records

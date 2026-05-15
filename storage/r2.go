@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"mime/multipart"
@@ -81,4 +82,23 @@ func (r *R2Storage) UploadImage(file multipart.File, header *multipart.FileHeade
 	// Retorna URL pública
 	url := fmt.Sprintf("%s/%s", strings.TrimRight(r.publicURL, "/"), key)
 	return url, nil
+}
+
+// UploadImageBytes faz upload de bytes já processados
+func (r *R2Storage) UploadImageBytes(key string, data []byte) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	_, err := r.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(r.bucket), // MUDE para r.bucket
+		Key:    aws.String(key),
+		Body:   bytes.NewReader(data),
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("erro ao fazer upload para R2: %w", err)
+	}
+
+	publicURL := fmt.Sprintf("%s/%s", r.publicURL, key)
+	return publicURL, nil
 }
