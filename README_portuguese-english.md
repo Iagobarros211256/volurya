@@ -519,6 +519,7 @@ Juntas formam um sistema de processamento de imagem assíncrono profissional.
 - [ ] Filtro e busca de produtos na store
 - [ ] Página de confirmação de pedido após checkout
 - [ ] Página 404 customizada com identidade visual da banda
+- [x] icone para ver a senha que esta sendo digitada na pagina de cadastro e login
 
 
 
