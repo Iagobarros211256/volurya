@@ -43,10 +43,18 @@ type PagSeguroChargeResponse struct {
 }
 
 func (ou *OrderUsecase) CreateOrder(userID int, productID int, quantity int) (string, error) {
+	if quantity <= 0 {
+		return "", ErrInvalidQuantity
+	}
+
 	// Busca o produto usando o ProductRepository
 	product, err := ou.productRepo.GetProductById(productID)
 	if err != nil {
 		return "", fmt.Errorf("produto não encontrado: %w", err)
+	}
+
+	if product.Stock < quantity {
+		return "", fmt.Errorf("%w: requested %d, available %d", ErrInsufficientStock, quantity, product.Stock)
 	}
 
 	// Cria a ordem no banco

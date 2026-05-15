@@ -135,7 +135,7 @@ func main() {
 	{ //products protected routes
 		protected.GET("/products", productController.GetProducts)
 		protected.GET("/products/:productId", productController.GetProductById)
-		
+
 		// Product routes requiring admin role
 		adminProduct := protected.Group("/products")
 		adminProduct.Use(auth.RequireAdminRole())

@@ -469,9 +469,9 @@ Feito com ❤️, raiva e muito café para aprender e mostrar como penso arquite
 - [x] user_id nos logs de rotas autenticadas
 
 ### 🔜 Features
-- [ ] Verificação de estoque no CreateOrder
+- [x] Verificação de estoque no CreateOrder
 - [ ] Webhook do PagSeguro (atualizar status do pedido para `paid`)
-- [ ] Guard de role `admin` nas rotas de criação/deleção de produtos
+- [x] Guard de role `admin` nas rotas de criação/deleção de produtos
 - [ ] Cache de produtos com Redis
 - [ ] Compressão gzip nas respostas
 

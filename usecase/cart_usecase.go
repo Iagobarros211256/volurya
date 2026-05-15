@@ -38,7 +38,7 @@ func (uc *CartUsecase) GetCart(userID int) (*models.Cart, error) {
 // AddItem adiciona um produto ao carrinho
 func (uc *CartUsecase) AddItem(userID, productID, quantity int) (*models.CartItem, error) {
 	if quantity <= 0 {
-		return nil, errors.New("quantity must be greater than zero")
+		return nil, ErrInvalidQuantity
 	}
 
 	// Verifica se o produto existe e tem estoque
@@ -50,7 +50,7 @@ func (uc *CartUsecase) AddItem(userID, productID, quantity int) (*models.CartIte
 		return nil, errors.New("product not found")
 	}
 	if product.Stock < quantity {
-		return nil, errors.New("insufficient stock")
+		return nil, ErrInsufficientStock
 	}
 
 	cart, err := uc.cartRepo.GetOrCreateCart(userID)
@@ -72,7 +72,7 @@ func (uc *CartUsecase) AddItem(userID, productID, quantity int) (*models.CartIte
 // UpdateItem atualiza a quantidade de um item do carrinho
 func (uc *CartUsecase) UpdateItem(userID, itemID, quantity int) (*models.CartItem, error) {
 	if quantity <= 0 {
-		return nil, errors.New("quantity must be greater than zero")
+		return nil, ErrInvalidQuantity
 	}
 
 	// Verifica se o item pertence ao carrinho do usuário
@@ -98,7 +98,7 @@ func (uc *CartUsecase) UpdateItem(userID, itemID, quantity int) (*models.CartIte
 		return nil, err
 	}
 	if product.Stock < quantity {
-		return nil, errors.New("insufficient stock")
+		return nil, ErrInsufficientStock
 	}
 
 	updated, err := uc.cartRepo.UpdateItemQuantity(itemID, quantity)

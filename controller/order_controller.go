@@ -2,6 +2,7 @@ package controller
 
 import (
 	"api/usecase"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -31,6 +32,15 @@ func (oc *OrderController) CreateOrder(c *gin.Context) {
 
 	paymentURL, err := oc.orderUsecase.CreateOrder(userID, req.ProductID, req.Quantity)
 	if err != nil {
+		if errors.Is(err, usecase.ErrInsufficientStock) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
+		if errors.Is(err, usecase.ErrInvalidQuantity) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

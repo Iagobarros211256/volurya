@@ -22,7 +22,7 @@ func NewProductUsecase(repo *repository.ProductRepository) *ProductUsecase {
 }
 
 // NewProductUsecaseWithImageProcessor cria um nova instância com suporte a processamento de imagens
-func NewProductUsecaseWithImageProcessor(repo *repository.ProductRepository, 
+func NewProductUsecaseWithImageProcessor(repo *repository.ProductRepository,
 	imageProcessor *jobs.ImageProcessor, storageProvider *storage.R2Storage) *ProductUsecase {
 	return &ProductUsecase{
 		repo:            repo,
@@ -32,9 +32,9 @@ func NewProductUsecaseWithImageProcessor(repo *repository.ProductRepository,
 }
 
 type ProductUsecase struct {
-	repo             *repository.ProductRepository
-	imageProcessor   *jobs.ImageProcessor
-	storageProvider  *storage.R2Storage
+	repo            *repository.ProductRepository
+	imageProcessor  *jobs.ImageProcessor
+	storageProvider *storage.R2Storage
 }
 
 func (pu *ProductUsecase) GetProducts(limitStr string, cursorStr string) ([]models.Product, *int, bool, error) {
@@ -232,7 +232,7 @@ func (pu *ProductUsecase) UploadImage(userID, productID int, file multipart.File
 		FileName:           header.Filename,
 		FileData:           fileData,
 		TargetSize:         5 * 1024 * 1024, // 5MB max
-		ResizeWidth:        1200,             // Redimensiona para 1200x1200 max
+		ResizeWidth:        1200,            // Redimensiona para 1200x1200 max
 		ResizeHeight:       1200,
 		CompressionQuality: 85,
 		OnComplete:         onImageComplete,
