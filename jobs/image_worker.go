@@ -13,15 +13,20 @@ import (
 	"time"
 
 	_ "image/gif"
+	_ "image/png"
 )
 
 // ImageJob representa uma tarefa de processamento de imagem
 type ImageJob struct {
-	ProductID  int
-	FileName   string
-	FileData   []byte
-	TargetSize int // tamanho máximo em bytes, 0 = sem limite
-	OnComplete func(processedData []byte, err error)
+	ProductID          int
+	FileName           string
+	FileData           []byte
+	TargetSize         int // tamanho máximo em bytes, 0 = sem limite
+	ResizeWidth        int // largura alvo para redimensionamento, 0 = não redimensionar
+	ResizeHeight       int // altura alvo para redimensionamento, 0 = não redimensionar
+	CompressionQuality int // 1-100, qualidade JPEG (padrão 85)
+	OnComplete         func(processedData []byte, err error)
+	StorageCallback    func([]byte) (string, error) // callback para upload em R2
 }
 
 // ImageWorkerPool gerencia um pool de workers para processar imagens
@@ -148,57 +153,103 @@ func (p *ImageWorkerPool) Close() error {
 	return nil
 }
 
-// processImageJob processa uma imagem individual
-// - Valida formato
-// - Comprime se necessário
-// - Retorna dados processados
+// processImageJob processa uma imagem seguindo o pipeline:
+// 1. Valida formato e dimensões
+// 2. Redimensiona se necessário
+// 3. Comprime para JPEG
+// 4. Chama callback de armazenamento (R2)
 func processImageJob(job ImageJob) ([]byte, error) {
+	ctx := context.Background()
+
+	// ===== STAGE 1: Validate =====
+	stageStart := time.Now()
 	if len(job.FileData) == 0 {
 		return nil, fmt.Errorf("arquivo vazio")
 	}
 
-	// 1. Decodificar imagem para validar e detectar tipo real
-	img, format, err := image.DecodeConfig(bytes.NewReader(job.FileData))
+	// Decodificar config para validar
+	imgConfig, format, err := image.DecodeConfig(bytes.NewReader(job.FileData))
 	if err != nil {
 		return nil, fmt.Errorf("falha ao decodificar imagem: %w", err)
 	}
 
 	logger.Log.LogAttrs(
-		context.Background(),
+		ctx,
 		slog.LevelDebug,
-		"Image decoded",
+		"Pipeline stage: VALIDATE",
 		slog.String("format", format),
-		slog.Int("width", img.Width),
-		slog.Int("height", img.Height),
+		slog.Int("width", imgConfig.Width),
+		slog.Int("height", imgConfig.Height),
+		slog.Int64("duration_ms", time.Since(stageStart).Milliseconds()),
 	)
 
-	// 2. Validar dimensões
-	if img.Width > 8000 || img.Height > 8000 {
-		return nil, fmt.Errorf("imagem muito grande: %dx%d (máximo 4000x4000)", img.Width, img.Height)
+	// Validar dimensões
+	if imgConfig.Width > 8000 || imgConfig.Height > 8000 {
+		return nil, fmt.Errorf("imagem muito grande: %dx%d (máximo 8000x8000)", imgConfig.Width, imgConfig.Height)
 	}
 
-	if img.Width < 100 || img.Height < 100 {
-		return nil, fmt.Errorf("imagem muito pequena: %dx%d (mínimo 100x100)", img.Width, img.Height)
+	if imgConfig.Width < 100 || imgConfig.Height < 100 {
+		return nil, fmt.Errorf("imagem muito pequena: %dx%d (mínimo 100x100)", imgConfig.Width, imgConfig.Height)
 	}
 
-	// 3. Decodificar imagem completa
+	// Decodificar imagem completa
 	fullImg, _, err := image.Decode(bytes.NewReader(job.FileData))
 	if err != nil {
 		return nil, fmt.Errorf("falha ao decodificar imagem completa: %w", err)
 	}
 
-	// 4. Comprimir para JPEG
+	// ===== STAGE 2: Resize (se necessário) =====
+	var processedImg image.Image
+	if job.ResizeWidth > 0 && job.ResizeHeight > 0 {
+		stageStart = time.Now()
+		processedImg = resizeImageAspectRatio(fullImg, job.ResizeWidth, job.ResizeHeight)
+		logger.Log.LogAttrs(
+			ctx,
+			slog.LevelDebug,
+			"Pipeline stage: RESIZE",
+			slog.Int("target_width", job.ResizeWidth),
+			slog.Int("target_height", job.ResizeHeight),
+			slog.Int("actual_width", processedImg.Bounds().Dx()),
+			slog.Int("actual_height", processedImg.Bounds().Dy()),
+			slog.Int64("duration_ms", time.Since(stageStart).Milliseconds()),
+		)
+	} else {
+		processedImg = fullImg
+	}
+
+	// ===== STAGE 3: Compress =====
+	stageStart = time.Now()
+	quality := job.CompressionQuality
+	if quality == 0 {
+		quality = 85 // padrão
+	}
+	if quality < 1 {
+		quality = 1
+	}
+	if quality > 100 {
+		quality = 100
+	}
+
 	processedBuffer := &bytes.Buffer{}
-	err = jpeg.Encode(processedBuffer, fullImg, &jpeg.Options{
-		Quality: 85, // Balance entre qualidade e tamanho
+	err = jpeg.Encode(processedBuffer, processedImg, &jpeg.Options{
+		Quality: quality,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("falha ao comprimir imagem: %w", err)
 	}
 
 	processedData := processedBuffer.Bytes()
+	logger.Log.LogAttrs(
+		ctx,
+		slog.LevelDebug,
+		"Pipeline stage: COMPRESS",
+		slog.Int("original_size", len(job.FileData)),
+		slog.Int("compressed_size", len(processedData)),
+		slog.Int("compression_quality", quality),
+		slog.Int64("duration_ms", time.Since(stageStart).Milliseconds()),
+	)
 
-	// 5. Validar tamanho máximo
+	// Validar tamanho máximo
 	if job.TargetSize > 0 && len(processedData) > job.TargetSize {
 		return nil, fmt.Errorf(
 			"imagem comprimida ainda acima do limite: %d bytes (máximo %d)",
@@ -207,7 +258,68 @@ func processImageJob(job ImageJob) ([]byte, error) {
 		)
 	}
 
+	// ===== STAGE 4: Storage Callback (R2 Upload) =====
+	if job.StorageCallback != nil {
+		stageStart = time.Now()
+		_, err := job.StorageCallback(processedData)
+		if err != nil {
+			return nil, fmt.Errorf("falha ao fazer upload para storage: %w", err)
+		}
+		logger.Log.LogAttrs(
+			ctx,
+			slog.LevelDebug,
+			"Pipeline stage: STORAGE",
+			slog.Int("size", len(processedData)),
+			slog.Int64("duration_ms", time.Since(stageStart).Milliseconds()),
+		)
+	}
+
 	return processedData, nil
+}
+
+// resizeImageAspectRatio redimensiona a imagem mantendo a proporção de aspecto
+// Usa interpolação linear (bilinear) para melhor qualidade
+func resizeImageAspectRatio(src image.Image, maxWidth, maxHeight int) image.Image {
+	bounds := src.Bounds()
+	srcWidth := bounds.Dx()
+	srcHeight := bounds.Dy()
+
+	// Calcular scaling factor mantendo aspecto
+	scale := 1.0
+	if srcWidth > maxWidth {
+		scale = float64(maxWidth) / float64(srcWidth)
+	}
+	if srcHeight > maxHeight {
+		newScale := float64(maxHeight) / float64(srcHeight)
+		if newScale < scale {
+			scale = newScale
+		}
+	}
+
+	// Se não precisa redimensionar, retorna original
+	if scale >= 1.0 {
+		return src
+	}
+
+	newWidth := int(float64(srcWidth) * scale)
+	newHeight := int(float64(srcHeight) * scale)
+
+	// Criar imagem redimensionada com interpolação nearest-neighbor
+	dst := image.NewRGBA(image.Rect(0, 0, newWidth, newHeight))
+
+	// Simples nearest-neighbor scaling
+	xRatio := float64(srcWidth-1) / float64(newWidth-1)
+	yRatio := float64(srcHeight-1) / float64(newHeight-1)
+
+	for y := 0; y < newHeight; y++ {
+		for x := 0; x < newWidth; x++ {
+			px := int(float64(x) * xRatio)
+			py := int(float64(y) * yRatio)
+			dst.Set(x, y, src.At(bounds.Min.X+px, bounds.Min.Y+py))
+		}
+	}
+
+	return dst
 }
 
 // ImageProcessor é um helper que enfileira jobs
@@ -228,10 +340,14 @@ func (ip *ImageProcessor) ProcessAsync(job ImageJob) error {
 }
 
 // ProcessSync processa uma imagem sincronamente (bloqueia)
+// Parâmetros padrão: redimensiona para 1200x1200 max, qualidade 85
 func ProcessImageSync(fileData []byte) ([]byte, error) {
 	job := ImageJob{
-		FileData:   fileData,
-		TargetSize: 5 * 1024 * 1024, // 5MB max
+		FileData:           fileData,
+		TargetSize:         5 * 1024 * 1024, // 5MB max
+		ResizeWidth:        1200,
+		ResizeHeight:       1200,
+		CompressionQuality: 85,
 	}
 	return processImageJob(job)
 }

@@ -495,7 +495,7 @@ Feito com ❤️, raiva e muito café para aprender e mostrar como penso arquite
 
 
 ### 🔧 Concorrência e Performance (Go avançado)
-- [ ] Worker pool para processamento de imagens (goroutines + channels)
+- [x] Worker pool para processamento de imagens (goroutines + channels)
 - [ ] Pipeline de processamento de imagem assíncrono (validar → redimensionar → comprimir → salvar no R2)
 - [ ] SSE (Server-Sent Events) para notificações em tempo real ao frontend
 

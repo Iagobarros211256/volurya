@@ -90,7 +90,7 @@ func (r *R2Storage) UploadImageBytes(key string, data []byte) (string, error) {
 	defer cancel()
 
 	_, err := r.client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(r.bucket), // MUDE para r.bucket
+		Bucket: aws.String(r.bucket),
 		Key:    aws.String(key),
 		Body:   bytes.NewReader(data),
 	})
@@ -100,5 +100,34 @@ func (r *R2Storage) UploadImageBytes(key string, data []byte) (string, error) {
 	}
 
 	publicURL := fmt.Sprintf("%s/%s", r.publicURL, key)
+	return publicURL, nil
+}
+
+// UploadProcessedImage faz upload de uma imagem processada da pipeline
+// Recebe o ID do produto e os bytes processados
+// Retorna a URL pública do arquivo
+func (r *R2Storage) UploadProcessedImage(productID int, data []byte) (string, error) {
+	if len(data) == 0 {
+		return "", fmt.Errorf("dados de imagem vazio")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Gera chave única com timestamp
+	key := fmt.Sprintf("products/%d/%d.jpg", productID, time.Now().UnixNano())
+
+	_, err := r.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(r.bucket),
+		Key:         aws.String(key),
+		Body:        bytes.NewReader(data),
+		ContentType: aws.String("image/jpeg"),
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("erro ao fazer upload de imagem processada para R2: %w", err)
+	}
+
+	publicURL := fmt.Sprintf("%s/%s", strings.TrimRight(r.publicURL, "/"), key)
 	return publicURL, nil
 }

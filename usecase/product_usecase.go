@@ -1,21 +1,40 @@
 package usecase
 
 import (
+	"api/jobs"
+	"api/logger"
 	"api/metrics"
 	"api/models"
 	"api/repository"
 	"api/storage"
+	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"mime/multipart"
 	"strconv"
 )
 
 func NewProductUsecase(repo *repository.ProductRepository) *ProductUsecase {
-	return &ProductUsecase{repo: repo}
+	return &ProductUsecase{
+		repo: repo,
+	}
+}
+
+// NewProductUsecaseWithImageProcessor cria um nova instância com suporte a processamento de imagens
+func NewProductUsecaseWithImageProcessor(repo *repository.ProductRepository, 
+	imageProcessor *jobs.ImageProcessor, storageProvider *storage.R2Storage) *ProductUsecase {
+	return &ProductUsecase{
+		repo:            repo,
+		imageProcessor:  imageProcessor,
+		storageProvider: storageProvider,
+	}
 }
 
 type ProductUsecase struct {
-	repo *repository.ProductRepository // ← pointer aqui também
+	repo             *repository.ProductRepository
+	imageProcessor   *jobs.ImageProcessor
+	storageProvider  *storage.R2Storage
 }
 
 func (pu *ProductUsecase) GetProducts(limitStr string, cursorStr string) ([]models.Product, *int, bool, error) {
@@ -137,19 +156,126 @@ func (pu *ProductUsecase) UploadImage(userID, productID int, file multipart.File
 		return nil, errors.New("forbidden: you do not own this product")
 	}
 
-	// Faz upload para o R2
-	imageURL, err := store.UploadImage(file, header)
+	// Se imageProcessor não está configurado, usa upload síncrono (fallback)
+	if pu.imageProcessor == nil {
+		imageURL, err := store.UploadImage(file, header)
+		if err != nil {
+			return nil, err
+		}
+
+		metrics.ImageUploadsTotal.Inc()
+
+		updated, err := pu.repo.UpdateImageURL(productID, imageURL)
+		if err != nil {
+			return nil, err
+		}
+
+		return updated, nil
+	}
+
+	// ===== ASYNC PIPELINE PROCESSING =====
+	// 1. Ler arquivo para memória
+	fileData, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(fileData) == 0 {
+		return nil, errors.New("arquivo vazio")
+	}
+
+	// 2. Criar callback para atualizar banco após processamento
+	onImageComplete := pu.createImageProcessingCallback(productID, userID)
+
+	// 3. Criar callback para upload em R2 e atualização do banco
+	storageCallback := func(processedData []byte) (string, error) {
+		publicURL, err := store.UploadProcessedImage(productID, processedData)
+		if err != nil {
+			logger.Log.LogAttrs(
+				context.Background(),
+				slog.LevelError,
+				"Failed to upload processed image to R2",
+				slog.Int("product_id", productID),
+				slog.String("error", err.Error()),
+			)
+			return "", err
+		}
+
+		// Atualizar banco com nova URL
+		_, err = pu.repo.UpdateImageURL(productID, publicURL)
+		if err != nil {
+			logger.Log.LogAttrs(
+				context.Background(),
+				slog.LevelError,
+				"Failed to update product image URL in database",
+				slog.Int("product_id", productID),
+				slog.String("url", publicURL),
+				slog.String("error", err.Error()),
+			)
+			return publicURL, err // Retorna URL mesmo com erro do DB (pode ser retentado)
+		}
+
+		logger.Log.LogAttrs(
+			context.Background(),
+			slog.LevelInfo,
+			"Image successfully processed and stored",
+			slog.Int("product_id", productID),
+			slog.String("url", publicURL),
+		)
+
+		return publicURL, nil
+	}
+
+	// 4. Enfileirar job de processamento assíncrono
+	imageJob := jobs.ImageJob{
+		ProductID:          productID,
+		FileName:           header.Filename,
+		FileData:           fileData,
+		TargetSize:         5 * 1024 * 1024, // 5MB max
+		ResizeWidth:        1200,             // Redimensiona para 1200x1200 max
+		ResizeHeight:       1200,
+		CompressionQuality: 85,
+		OnComplete:         onImageComplete,
+		StorageCallback:    storageCallback,
+	}
+
+	err = pu.imageProcessor.ProcessAsync(imageJob)
 	if err != nil {
 		return nil, err
 	}
 
 	metrics.ImageUploadsTotal.Inc()
 
-	// Atualiza o produto no banco
-	updated, err := pu.repo.UpdateImageURL(productID, imageURL)
-	if err != nil {
-		return nil, err
-	}
+	// Retorna o produto atual (processamento acontece assincronamente)
+	// URL será atualizada no banco quando o processamento terminar
+	return product, nil
+}
 
-	return updated, nil
+// createImageProcessingCallback cria um callback para ser executado após o processamento
+func (pu *ProductUsecase) createImageProcessingCallback(productID, userID int) func([]byte, error) {
+	return func(processedData []byte, err error) {
+		ctx := context.Background()
+
+		if err != nil {
+			logger.Log.LogAttrs(
+				ctx,
+				slog.LevelError,
+				"Image processing failed - will not update database",
+				slog.Int("product_id", productID),
+				slog.String("error", err.Error()),
+			)
+			return
+		}
+
+		logger.Log.LogAttrs(
+			ctx,
+			slog.LevelInfo,
+			"Image processing completed successfully",
+			slog.Int("product_id", productID),
+			slog.Int("processed_size", len(processedData)),
+		)
+
+		// Note: URL é atualizada pelo StorageCallback durante o processamento
+		// Este callback é apenas para logging de conclusão
+	}
 }
