@@ -134,11 +134,18 @@ func main() {
 	protected.Use(auth.Middleware())
 	{ //products protected routes
 		protected.GET("/products", productController.GetProducts)
-		protected.POST("/products", productController.CreateProduct)
-		protected.POST("/orders", orderController.CreateOrder)
 		protected.GET("/products/:productId", productController.GetProductById)
-		protected.PUT("/products/:productId", productController.UpdateProduct)
-		protected.DELETE("/products/:productId", productController.Delete)
+		
+		// Product routes requiring admin role
+		adminProduct := protected.Group("/products")
+		adminProduct.Use(auth.RequireAdminRole())
+		{
+			adminProduct.POST("", productController.CreateProduct)
+			adminProduct.PUT("/:productId", productController.UpdateProduct)
+			adminProduct.DELETE("/:productId", productController.Delete)
+		}
+
+		protected.POST("/orders", orderController.CreateOrder)
 
 		//cart protected routes
 		protected.GET("/cart", cartController.GetCart)
@@ -147,8 +154,8 @@ func main() {
 		protected.DELETE("/cart/items/:itemId", cartController.RemoveItem)
 		protected.POST("/cart/checkout", cartController.Checkout)
 
-		//images protected route
-		protected.POST("/products/:productId/image", productController.UploadImage)
+		//images protected route (admin only)
+		adminProduct.POST("/:productId/image", productController.UploadImage)
 	}
 
 	// Porta
