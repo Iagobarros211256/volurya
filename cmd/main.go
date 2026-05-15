@@ -97,6 +97,10 @@ func main() {
 		slog.Error("failed to run migrations", "error", err)
 		os.Exit(1)
 	}
+	if err := db.BootstrapAdminUser(dbConnection); err != nil {
+		slog.Error("failed to bootstrap admin user", "error", err)
+		os.Exit(1)
+	}
 
 	// Repositories
 	productRepository := repository.NewProductRepository(dbConnection)

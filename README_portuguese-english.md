@@ -76,7 +76,11 @@ PAGSEGURO_SANDBOX=true
 PAGSEGURO_WEBHOOK_URL=http://localhost:8080/api/webhook
 ACCESS_TOKEN_DURATION_MINUTES=15
 REFRESH_TOKEN_DURATION_DAYS=7
+BOOTSTRAP_ADMIN_EMAIL=admin@volurya.com
+BOOTSTRAP_ADMIN_PASSWORD=troque-esta-senha
 ```
+
+`BOOTSTRAP_ADMIN_EMAIL` e `BOOTSTRAP_ADMIN_PASSWORD` são opcionais. Quando definidos, a API cria ou atualiza esse usuário com `role=admin` no startup; use isso no Render para ter um usuário de teste/admin no banco de produção sem gravar credenciais no código.
 
 Start services:
 
@@ -290,7 +294,11 @@ PAGSEGURO_SANDBOX=true
 PAGSEGURO_WEBHOOK_URL=http://localhost:8080/api/webhook
 ACCESS_TOKEN_DURATION_MINUTES=15
 REFRESH_TOKEN_DURATION_DAYS=7
+BOOTSTRAP_ADMIN_EMAIL=admin@volurya.com
+BOOTSTRAP_ADMIN_PASSWORD=troque-esta-senha
 ```
+
+`BOOTSTRAP_ADMIN_EMAIL` e `BOOTSTRAP_ADMIN_PASSWORD` são opcionais. Quando definidos, a API cria ou atualiza esse usuário com `role=admin` no startup; use isso no Render para ter um usuário de teste/admin no banco de produção sem gravar credenciais no código.
 
 Suba os containers:
 
