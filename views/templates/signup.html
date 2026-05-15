@@ -89,7 +89,7 @@
           localStorage.setItem('token', data.access_token);
           localStorage.setItem('refresh_token', data.refresh_token);
           showToast('Conta criada! Redirecionando...', 'success');
-          setTimeout(() => window.location.href = '/store', 1500);
+          setTimeout(() => window.location.href = getAuthRedirect('/store'), 1500);
         } else {
           showToast(data.error || 'Erro ao criar conta', 'danger');
         }

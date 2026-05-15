@@ -3,7 +3,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
   // Redireciona se não estiver logado
   if (!isLoggedIn()) {
-    window.location.href = '/login';
+    goToLogin();
     return;
   }
 
@@ -97,6 +97,7 @@ async function updateQuantity(itemId, quantity) {
 
     if (res.ok) {
       await loadCart();
+      updateCartBadge();
     } else {
       const data = await res.json();
       showToast(data.error || 'Erro ao atualizar', 'danger');
@@ -115,6 +116,7 @@ async function removeItem(itemId) {
     if (res.ok) {
       document.getElementById(`item-${itemId}`)?.remove();
       await loadCart();
+      updateCartBadge();
     } else {
       showToast('Erro ao remover item', 'danger');
     }

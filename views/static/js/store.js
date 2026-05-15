@@ -42,6 +42,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       // listener adicionado direto no botão após criação
       col.querySelector('.buy-btn').addEventListener('click', async () => {
+        if (!isLoggedIn()) {
+          goToLogin();
+          return;
+        }
+
         try {
           const res = await fetch('/api/orders', {
             method: 'POST',
@@ -50,6 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
           const data = await res.json();
           if (res.ok) {
+            updateCartBadge();
             window.location.href = data.payment_url;
           } else {
             showToast(data.error, 'danger');

@@ -511,9 +511,9 @@ Juntas formam um sistema de processamento de imagem assíncrono profissional.
 ### 🎨 Frontend
 - [x] Página do carrinho visual com listagem de itens e total
 - [x] Página "About" com bio completa e galeria de fotos com lightbox
-- [ ] Botão de logout no navbar quando usuário estiver logado
-- [ ] Badge de quantidade no ícone do carrinho no navbar
-- [ ] Redirecionamento inteligente — login redireciona de volta para a página anterior
+- [x] Botão de logout no navbar quando usuário estiver logado
+- [x] Badge de quantidade no ícone do carrinho no navbar
+- [x] Redirecionamento inteligente — login redireciona de volta para a página anterior
 - [ ] Usar `image_url` real do produto na store (hoje está hardcoded)
 - [ ] Skeleton loading nos cards de produto
 - [ ] Filtro e busca de produtos na store
