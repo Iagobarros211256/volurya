@@ -9,23 +9,15 @@ import (
 
 func Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
+		token := bearerToken(c)
+		if token == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "unauthorized",
 			})
 			return
 		}
 
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "unauthorized",
-			})
-			return
-		}
-
-		claims, err := ValidateToken(parts[1])
+		claims, err := ValidateToken(token)
 		if err != nil {
 			// aqui você pode logar err
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
@@ -39,6 +31,22 @@ func Middleware() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+func bearerToken(c *gin.Context) string {
+	authHeader := c.GetHeader("Authorization")
+	if authHeader != "" {
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) == 2 && parts[0] == "Bearer" {
+			return parts[1]
+		}
+	}
+
+	if c.Request.Method == http.MethodGet && c.FullPath() == "/api/events" {
+		return c.Query("access_token")
+	}
+
+	return ""
 }
 
 func RequireAdminRole() gin.HandlerFunc {

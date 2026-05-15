@@ -386,6 +386,7 @@ curl -X GET https://volurya.onrender.com/api/products \
 | PUT | /api/cart/items/:itemId | Atualizar quantidade do item | Sim |
 | DELETE | /api/cart/items/:itemId | Remover item do carrinho | Sim |
 | POST | /api/cart/checkout | Finalizar compra e gerar links de pagamento | Sim |
+| GET | /api/events | Stream SSE de notificações em tempo real | Sim |
 
 ## 🧪 Testes
 
@@ -496,8 +497,8 @@ Feito com ❤️, raiva e muito café para aprender e mostrar como penso arquite
 
 ### 🔧 Concorrência e Performance (Go avançado)
 - [x] Worker pool para processamento de imagens (goroutines + channels)
-- [ ] Pipeline de processamento de imagem assíncrono (validar → redimensionar → comprimir → salvar no R2)
-- [ ] SSE (Server-Sent Events) para notificações em tempo real ao frontend
+- [x] Pipeline de processamento de imagem assíncrono (validar → redimensionar → comprimir → salvar no R2)
+- [x] SSE (Server-Sent Events) para notificações em tempo real ao frontend
 
 ### 💡 Por que essas features?
 Essas três implementações foram escolhidas para demonstrar o que Go faz melhor:

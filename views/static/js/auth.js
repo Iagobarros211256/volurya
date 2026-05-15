@@ -59,8 +59,51 @@ function isLoggedIn() {
   }
 }
 
+let notificationSource;
+
+function connectNotifications() {
+  if (notificationSource || !isLoggedIn()) return;
+
+  const token = localStorage.getItem('token');
+  notificationSource = new EventSource(`${API_BASE}/events?access_token=${encodeURIComponent(token)}`);
+
+  notificationSource.onmessage = handleNotificationEvent;
+
+  [
+    'cart_item_added',
+    'cart_item_updated',
+    'cart_item_removed',
+    'checkout_created',
+    'order_created'
+  ].forEach(eventType => {
+    notificationSource.addEventListener(eventType, handleNotificationEvent);
+  });
+
+  notificationSource.onerror = () => {
+    notificationSource.close();
+    notificationSource = null;
+    if (isLoggedIn()) {
+      setTimeout(connectNotifications, 5000);
+    }
+  };
+}
+
+function handleNotificationEvent(event) {
+  try {
+    const data = JSON.parse(event.data);
+    if (data.type === 'connected') return;
+    showToast(data.message || 'Nova notificação', 'info');
+  } catch {
+    showToast('Nova notificação', 'info');
+  }
+}
+
 // Logout
 function logout() {
+  if (notificationSource) {
+    notificationSource.close();
+    notificationSource = null;
+  }
   localStorage.removeItem('token');
   showToast('Você saiu!', 'info');
   setTimeout(() => window.location.href = '/login', 1500);
@@ -81,5 +124,8 @@ async function login(email, password) {
 
   const data = await res.json();
   localStorage.setItem('token', data.access_token);
+  connectNotifications();
   return data;
 }
+
+document.addEventListener('DOMContentLoaded', connectNotifications);

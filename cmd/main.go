@@ -7,6 +7,7 @@ import (
 	"api/jobs"
 	"api/logger"
 	"api/middleware"
+	"api/notifications"
 	"api/repository"
 	"api/storage"
 	"api/usecase"
@@ -35,6 +36,7 @@ func main() {
 	// Iniciar worker pool (4 workers)
 	imageProcessor := jobs.NewImageProcessor(4)
 	defer imageProcessor.Shutdown()
+	notificationHub := notifications.NewHub()
 
 	router.LoadHTMLGlob("views/templates/*")
 	router.Static("/static", "./views/static")
@@ -117,8 +119,9 @@ func main() {
 		imageProcessor, // NOVO - passe o processor aqui
 	)
 	authController := controller.NewAuthController(authUseCase)
-	orderController := controller.NewOrderController(orderUsecase)
-	cartController := controller.NewCartController(cartUsecase, orderUsecase)
+	orderController := controller.NewOrderController(orderUsecase, notificationHub)
+	cartController := controller.NewCartController(cartUsecase, orderUsecase, notificationHub)
+	notificationController := controller.NewNotificationController(notificationHub)
 
 	// Rotas públicas
 	public := router.Group("/api")
@@ -146,6 +149,7 @@ func main() {
 		}
 
 		protected.POST("/orders", orderController.CreateOrder)
+		protected.GET("/events", notificationController.Stream)
 
 		//cart protected routes
 		protected.GET("/cart", cartController.GetCart)
@@ -169,6 +173,7 @@ func main() {
 		Addr:    ":" + port,
 		Handler: router,
 	}
+	srv.RegisterOnShutdown(notificationHub.Close)
 
 	// 👇 Rodar servidor em goroutine
 	go func() {

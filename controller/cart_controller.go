@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"api/notifications"
 	"api/usecase"
 	"net/http"
 	"strconv"
@@ -11,12 +12,14 @@ import (
 type CartController struct {
 	cartUsecase  *usecase.CartUsecase
 	orderUsecase *usecase.OrderUsecase
+	hub          *notifications.Hub
 }
 
-func NewCartController(cartUsecase *usecase.CartUsecase, orderUsecase *usecase.OrderUsecase) *CartController {
+func NewCartController(cartUsecase *usecase.CartUsecase, orderUsecase *usecase.OrderUsecase, hub *notifications.Hub) *CartController {
 	return &CartController{
 		cartUsecase:  cartUsecase,
 		orderUsecase: orderUsecase,
+		hub:          hub,
 	}
 }
 
@@ -54,6 +57,7 @@ func (cc *CartController) AddItem(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, item)
+	cc.publish(userID, "cart_item_added", "Produto adicionado ao carrinho")
 }
 
 // UpdateItem atualiza a quantidade de um item
@@ -82,6 +86,7 @@ func (cc *CartController) UpdateItem(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, item)
+	cc.publish(userID, "cart_item_updated", "Carrinho atualizado")
 }
 
 // RemoveItem remove um item do carrinho
@@ -100,6 +105,7 @@ func (cc *CartController) RemoveItem(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+	cc.publish(userID, "cart_item_removed", "Produto removido do carrinho")
 }
 
 // Checkout finaliza o carrinho
@@ -115,5 +121,17 @@ func (cc *CartController) Checkout(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{
 		"message":      "checkout realizado com sucesso",
 		"payment_urls": paymentURLs,
+	})
+	cc.publish(userID, "checkout_created", "Checkout realizado com sucesso")
+}
+
+func (cc *CartController) publish(userID int, eventType string, message string) {
+	if cc.hub == nil {
+		return
+	}
+
+	cc.hub.Publish(userID, notifications.Event{
+		Type:    eventType,
+		Message: message,
 	})
 }

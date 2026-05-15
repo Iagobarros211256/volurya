@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"api/notifications"
 	"api/usecase"
 	"errors"
 	"net/http"
@@ -10,10 +11,11 @@ import (
 
 type OrderController struct {
 	orderUsecase *usecase.OrderUsecase
+	hub          *notifications.Hub
 }
 
-func NewOrderController(ou *usecase.OrderUsecase) *OrderController {
-	return &OrderController{orderUsecase: ou}
+func NewOrderController(ou *usecase.OrderUsecase, hub *notifications.Hub) *OrderController {
+	return &OrderController{orderUsecase: ou, hub: hub}
 }
 
 // CreateOrder cria uma ordem e retorna o link de pagamento do PagSeguro
@@ -49,4 +51,11 @@ func (oc *OrderController) CreateOrder(c *gin.Context) {
 		"message":     "Ordem criada com sucesso",
 		"payment_url": paymentURL,
 	})
+
+	if oc.hub != nil {
+		oc.hub.Publish(userID, notifications.Event{
+			Type:    "order_created",
+			Message: "Ordem criada com sucesso",
+		})
+	}
 }
