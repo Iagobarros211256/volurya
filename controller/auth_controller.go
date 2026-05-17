@@ -35,6 +35,27 @@ type LogoutRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
+type AuthResponse struct {
+	Message      string `json:"message,omitempty"`
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
+// Login godoc
+// @Summary User login
+// @Description Authenticate user and return tokens
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body LoginRequest true "Login credentials"
+// @Success 200 {object} AuthResponse
+// @Failure 400 {object} ErrorResponse "Invalid email or password"
+// @Failure 401 {object} ErrorResponse "Invalid credentials"
+// @Router /login [post]
 func (a *AuthController) Login(ctx *gin.Context) {
 	var req LoginRequest
 
@@ -55,6 +76,16 @@ func (a *AuthController) Login(ctx *gin.Context) {
 	})
 }
 
+// Signup godoc
+// @Summary User registration
+// @Description Create a new user account
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body SignupRequest true "Registration data"
+// @Success 201 {object} AuthResponse
+// @Failure 400 {object} ErrorResponse "Invalid data or email already registered"
+// @Router /signup [post]
 func (a *AuthController) Signup(ctx *gin.Context) {
 	var req SignupRequest
 
@@ -76,6 +107,17 @@ func (a *AuthController) Signup(ctx *gin.Context) {
 	})
 }
 
+// RefreshToken godoc
+// @Summary Refresh access token
+// @Description Get a new access token using refresh token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body RefreshTokenRequest true "Refresh token"
+// @Success 200 {object} AuthResponse
+// @Failure 400 {object} ErrorResponse "refresh_token is required"
+// @Failure 401 {object} ErrorResponse "Invalid or expired refresh token"
+// @Router /refresh [post]
 func (a *AuthController) RefreshToken(ctx *gin.Context) {
 	var req RefreshTokenRequest
 
@@ -96,6 +138,17 @@ func (a *AuthController) RefreshToken(ctx *gin.Context) {
 	})
 }
 
+// Logout godoc
+// @Summary User logout
+// @Description Revoke refresh token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body LogoutRequest true "Refresh token"
+// @Success 200 {object} AuthResponse "Logout successful"
+// @Failure 400 {object} ErrorResponse "refresh_token is required"
+// @Failure 500 {object} ErrorResponse "Failed to logout"
+// @Router /logout [post]
 func (a *AuthController) Logout(ctx *gin.Context) {
 	var req LogoutRequest
 

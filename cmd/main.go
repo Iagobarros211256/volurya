@@ -22,7 +22,27 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	swaggerfiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
+	_ "api/docs"
 )
+
+// @title Volurya API
+// @version 1.0
+// @description API de e-commerce para a Volurya Shop
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name Volurya Support
+// @contact.url http://www.volurya.com/support
+// @contact.email support@volurya.com
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host api.volurya.com
+// @BasePath /api
+// @schemes https http
 
 func main() {
 
@@ -74,6 +94,8 @@ func main() {
 	})
 
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	router.HEAD("/", func(c *gin.Context) {
 		c.Status(200)

@@ -1,0 +1,188 @@
+basePath: /api
+definitions:
+  controller.AuthResponse:
+    properties:
+      access_token:
+        type: string
+      message:
+        type: string
+      refresh_token:
+        type: string
+    type: object
+  controller.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  controller.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        maxLength: 128
+        minLength: 8
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  controller.LogoutRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  controller.RefreshTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  controller.SignupRequest:
+    properties:
+      email:
+        type: string
+      password:
+        maxLength: 128
+        minLength: 8
+        type: string
+    required:
+    - email
+    - password
+    type: object
+host: api.volurya.com
+info:
+  contact:
+    email: support@volurya.com
+    name: Volurya Support
+    url: http://www.volurya.com/support
+  description: API de e-commerce para a Volurya Shop
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Volurya API
+  version: "1.0"
+paths:
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user and return tokens
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controller.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.AuthResponse'
+        "400":
+          description: Invalid email or password
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "401":
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: User login
+      tags:
+      - auth
+  /logout:
+    post:
+      consumes:
+      - application/json
+      description: Revoke refresh token
+      parameters:
+      - description: Refresh token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controller.LogoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Logout successful
+          schema:
+            $ref: '#/definitions/controller.AuthResponse'
+        "400":
+          description: refresh_token is required
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "500":
+          description: Failed to logout
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: User logout
+      tags:
+      - auth
+  /refresh:
+    post:
+      consumes:
+      - application/json
+      description: Get a new access token using refresh token
+      parameters:
+      - description: Refresh token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controller.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.AuthResponse'
+        "400":
+          description: refresh_token is required
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "401":
+          description: Invalid or expired refresh token
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: Refresh access token
+      tags:
+      - auth
+  /signup:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account
+      parameters:
+      - description: Registration data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controller.SignupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/controller.AuthResponse'
+        "400":
+          description: Invalid data or email already registered
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: User registration
+      tags:
+      - auth
+schemes:
+- https
+- http
+swagger: "2.0"
