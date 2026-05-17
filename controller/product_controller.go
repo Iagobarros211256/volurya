@@ -15,6 +15,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -43,12 +44,19 @@ func NewProductController(
 }
 
 func (p *ProductController) GetProducts(ctx *gin.Context) {
+	limitStr := ctx.DefaultQuery("limit", "10")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 || limit > 100 {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit: must be between 1 and 100",
+		})
+		return
+	}
 
-	limit := ctx.Query("limit")
-	cursor := ctx.Query("cursor")
+	cursor := strings.TrimSpace(ctx.Query("cursor"))
 
 	products, nextCursor, hasMore, err :=
-		p.productUsecase.GetProducts(limit, cursor)
+		p.productUsecase.GetProducts(strconv.Itoa(limit), cursor)
 
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{

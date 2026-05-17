@@ -17,18 +17,33 @@ func NewAuthController(uc *usecase.AuthUsecase) *AuthController {
 	}
 }
 
-func (a *AuthController) Login(ctx *gin.Context) {
-	var body struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+type LoginRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=8,max=128"`
+}
 
-	if err := ctx.ShouldBindJSON(&body); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
+type SignupRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=8,max=128"`
+}
+
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+type LogoutRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+func (a *AuthController) Login(ctx *gin.Context) {
+	var req LoginRequest
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid email or password"})
 		return
 	}
 
-	accessToken, refreshToken, err := a.authUsecase.Login(body.Email, body.Password)
+	accessToken, refreshToken, err := a.authUsecase.Login(req.Email, req.Password)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
@@ -41,17 +56,14 @@ func (a *AuthController) Login(ctx *gin.Context) {
 }
 
 func (a *AuthController) Signup(ctx *gin.Context) {
-	var body struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+	var req SignupRequest
 
-	if err := ctx.ShouldBindJSON(&body); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid email or password"})
 		return
 	}
 
-	accessToken, refreshToken, err := a.authUsecase.Signup(body.Email, body.Password)
+	accessToken, refreshToken, err := a.authUsecase.Signup(req.Email, req.Password)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -65,16 +77,14 @@ func (a *AuthController) Signup(ctx *gin.Context) {
 }
 
 func (a *AuthController) RefreshToken(ctx *gin.Context) {
-	var body struct {
-		RefreshToken string `json:"refresh_token"`
-	}
+	var req RefreshTokenRequest
 
-	if err := ctx.ShouldBindJSON(&body); err != nil || body.RefreshToken == "" {
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "refresh_token is required"})
 		return
 	}
 
-	accessToken, refreshToken, err := a.authUsecase.RefreshToken(body.RefreshToken)
+	accessToken, refreshToken, err := a.authUsecase.RefreshToken(req.RefreshToken)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
@@ -87,16 +97,14 @@ func (a *AuthController) RefreshToken(ctx *gin.Context) {
 }
 
 func (a *AuthController) Logout(ctx *gin.Context) {
-	var body struct {
-		RefreshToken string `json:"refresh_token"`
-	}
+	var req LogoutRequest
 
-	if err := ctx.ShouldBindJSON(&body); err != nil || body.RefreshToken == "" {
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "refresh_token is required"})
 		return
 	}
 
-	if err := a.authUsecase.Logout(body.RefreshToken); err != nil {
+	if err := a.authUsecase.Logout(req.RefreshToken); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to logout"})
 		return
 	}

@@ -7,6 +7,7 @@ import (
 	"api/models"
 	"api/repository"
 	"errors"
+	"net/mail"
 	"strings"
 	"time"
 
@@ -28,11 +29,11 @@ func NewAuthUsecase(userRepo repository.UserRepositoryInterface, refreshTokenRep
 func (a *AuthUsecase) Signup(email, password string) (string, string, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
 
-	if !strings.Contains(email, "@") || !strings.Contains(email, ".") {
+	if _, err := mail.ParseAddress(email); err != nil {
 		return "", "", errors.New("invalid email format")
 	}
-	if len(password) < 8 {
-		return "", "", errors.New("password must be at least 8 characters")
+	if len(password) < 8 || len(password) > 128 {
+		return "", "", errors.New("password must be between 8 and 128 characters")
 	}
 
 	existing, err := a.userRepo.GetByEmail(email)
@@ -79,6 +80,8 @@ func (a *AuthUsecase) Signup(email, password string) (string, string, error) {
 }
 
 func (a *AuthUsecase) Login(email, password string) (string, string, error) {
+	email = strings.TrimSpace(strings.ToLower(email))
+	
 	user, err := a.userRepo.GetByEmail(email)
 	if err != nil || user == nil {
 		return "", "", errors.New("invalid credentials")

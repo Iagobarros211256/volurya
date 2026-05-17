@@ -32,6 +32,7 @@ func main() {
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(middleware.RequestLogger())
+	router.Use(middleware.CORS())
 
 	// Iniciar worker pool (4 workers)
 	imageProcessor := jobs.NewImageProcessor(4)
@@ -128,10 +129,11 @@ func main() {
 	notificationController := controller.NewNotificationController(notificationHub)
 
 	// Rotas públicas
+	authLimiter := middleware.NewRateLimiter(5, 1*time.Minute) // 5 tentativas por minuto
 	public := router.Group("/api")
 	{
-		public.POST("/signup", authController.Signup)
-		public.POST("/login", authController.Login)
+		public.POST("/signup", authLimiter.Middleware(), authController.Signup)
+		public.POST("/login", authLimiter.Middleware(), authController.Login)
 		public.POST("/refresh", authController.RefreshToken)
 		public.POST("/logout", authController.Logout)
 	}
