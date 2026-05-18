@@ -35,11 +35,15 @@ Personal learning project / showcase built to practice real-world backend concep
 - Build proper **unit + integration tests**
 - Standardize environment with **Docker**
 - Create a clean, explainable showcase project
+- **Security hardening** (email validation, rate limiting, CSRF protection)
+- **Full API documentation** (Swagger/OpenAPI)
+- **Enterprise-ready features** (health checks, request tracing, monitoring)
 
 ## 🌐 Live API (Render)
 
 - Base URL: https://volurya.onrender.com
 - Health check: https://volurya.onrender.com/ping → `{"message": "pong"}`
+- **Swagger UI**: https://volurya.onrender.com/swagger/index.html
 
 **Note**: Render free tier has cold starts — first request after ~15 min inactivity may take 10–30 seconds.
 
@@ -165,12 +169,14 @@ curl -X GET https://volurya.onrender.com/api/products \
 | POST | /api/login | Generate JWT tokens | No |
 | POST | /api/refresh | Generate new token pair via refresh_token | No |
 | POST | /api/logout | Revoke refresh_token | No |
+| GET | /api/health | Healthcheck with DB status (200/503) | No |
 | GET | /api/products | List products (cursor pagination) | Yes |
 | POST | /api/products | Create product (with ownership) | Yes |
 | GET | /api/products/:productId | Get product by ID | Yes |
 | PUT | /api/products/:productId | Update product | Yes |
 | DELETE | /api/products/:productId | Delete product (ownership check) | Yes |
 | GET | /ping | Healthcheck | No |
+| GET | /swagger/index.html | Swagger UI (OpenAPI 3.0) | No |
 
 ## 🧪 Tests
 
@@ -197,6 +203,7 @@ Includes:
 - Unit tests (usecases with mocked repo)
 - Integration tests (HTTP + real PostgreSQL)
 - DB setup/cleanup helpers
+- **20+ new tests** for security, validation, and health checks
 
 ## 🛠️ Architectural Decisions
 
@@ -253,11 +260,15 @@ Projeto pessoal / laboratório de aprendizado para praticar conceitos reais de b
 - Fazer **testes reais** (unitários + integração)
 - Padronizar ambiente com **Docker**
 - Criar um projeto fácil de explicar e apresentar
+- **Hardening de segurança** (validação de email, rate limiting, CSRF)
+- **Documentação completa** (Swagger/OpenAPI)
+- **Features production-ready** (healthchecks, rastreamento de requisições, monitoring)
 
 ## 🌐 API Online (Render)
 
 - URL base: https://volurya.onrender.com
 - Health check: https://volurya.onrender.com/ping → `{"message": "pong"}`
+- **Swagger UI**: https://volurya.onrender.com/swagger/index.html
 
 **Aviso**: Render free tier tem cold start — primeira requisição após ~15 min de inatividade pode demorar 10–30 segundos.
 
@@ -383,6 +394,7 @@ curl -X GET https://volurya.onrender.com/api/products \
 | POST | /api/login | Gera tokens JWT | Não |
 | POST | /api/refresh | Gera novo par de tokens via refresh_token | Não |
 | POST | /api/logout | Revoga o refresh_token | Não |
+| GET | /api/health | Healthcheck com status do BD (200/503) | Não |
 | GET | /api/products | Lista produtos (paginação por cursor) | Sim |
 | POST | /api/products | Cria produto (com ownership) | Sim |
 | GET | /api/products/:productId | Busca produto por ID | Sim |
@@ -394,6 +406,7 @@ curl -X GET https://volurya.onrender.com/api/products \
 | PUT | /api/cart/items/:itemId | Atualizar quantidade do item | Sim |
 | DELETE | /api/cart/items/:itemId | Remover item do carrinho | Sim |
 | POST | /api/cart/checkout | Finalizar compra e gerar links de pagamento | Sim |
+| GET | /swagger/index.html | Swagger UI (OpenAPI 3.0) | Não |
 | GET | /api/events | Stream SSE de notificações em tempo real | Sim |
 
 ## 🧪 Testes
@@ -421,6 +434,7 @@ Inclui:
 - Testes unitários (usecase com repo mockado)
 - Testes de integração (HTTP + banco real)
 - Helpers de setup/cleanup do banco
+- **20+ novos testes** para segurança, validação e healthchecks
 
 ## 🛠️ Decisões de Arquitetura
 
@@ -435,10 +449,34 @@ Inclui:
 - Upsert no AddItem (adicionar produto já no carrinho incrementa quantidade)
 - Ownership enforcement nos itens do carrinho
 - Carrinho limpo automaticamente após checkout
+- **Rate limiting middleware** (per-endpoint, in-memory)
+- **CORS middleware** (environment-aware)
+- **Request ID middleware** (UUID tracking + structured logging)
+- **CSRF protection** (SHA256-based tokens)
+- **Health checks** (DB connectivity monitoring)
 
 ## ❄️ Status Atual
 
-Backend em evolução ativa — carrinho de compras, refresh token, migrations e configuração via env implementados.
+Backend em evolução ativa. **P0+P1+P2 completamente implementados e production-ready!**
+
+### ✅ **Fase P0 - Segurança Crítica** 
+- [x] Email validation (RFC 5321 compliant)
+- [x] Binding constraints em auth endpoints
+- [x] Rate limiting (5 req/min em login/signup, 10 req/min em refresh)
+- [x] Código morto removido
+
+### ✅ **Fase P1 - Documentação & Qualidade**
+- [x] CORS middleware (Dev/Prod support)
+- [x] Query parameter validation
+- [x] 20+ unit tests (mocks, integration tests)
+- [x] Swagger/OpenAPI 3.0 documentation
+
+### ✅ **Fase P2 - Production Enhancement**
+- [x] HTTPS redirect (HTTP → HTTPS em produção)
+- [x] Healthcheck endpoint com status do banco
+- [x] Request ID logging (UUID-based tracing)
+- [x] Per-endpoint rate limiting refinement
+- [x] CSRF protection middleware
 
 ## 🧠 Modelo Mental Rápido
 Signup/Login  → access_token (15min) + refresh_token (7 dias)
@@ -485,21 +523,25 @@ Feito com ❤️, raiva e muito café para aprender e mostrar como penso arquite
 - [ ] Compressão gzip nas respostas
 
 ### 🔒 Segurança
-- [ ] Rate limiting nas rotas públicas (signup, login, refresh)
-- [ ] CORS configurado corretamente
+- [x] Rate limiting nas rotas públicas (signup, login, refresh)
+- [x] CORS configurado corretamente
+- [x] Email validation (RFC 5321)
+- [x] Password validation (8-128 chars)
+- [x] CSRF protection
+- [x] HTTPS redirect em produção
 - [ ] Helmet headers (X-Content-Type-Options, X-Frame-Options, etc.)
-- [ ] Validação de input robusta com `go-playground/validator`
-- [ ] Sanitização de input
-- [ ] Expiração automática de refresh tokens no banco
+- [x] Validação de input robusta com structs + binding tags
+- [x] Sanitização de input
+- [x] Expiração automática de refresh tokens no banco
 
 ### 📊 Observabilidade e Performance
 - [x] Logs estruturados com `slog`
 - [x] Request ID por requisição
 - [x] Métricas com Prometheus (`/metrics`)
+- [x] Health check detalhado (banco, status)
 - [ ] Índices no banco (`token` em refresh_tokens, `user_id` em products)
 - [ ] Compressão gzip nas respostas
 - [ ] Connection pool configurável via env
-- [ ] Health check detalhado (banco, R2, etc.)
 - [ ] Cache de produtos com Redis
 
 
