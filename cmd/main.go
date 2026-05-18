@@ -51,8 +51,11 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 	router.Use(gin.Recovery())
+	router.Use(middleware.RequestID())
 	router.Use(middleware.RequestLogger())
 	router.Use(middleware.CORS())
+	router.Use(middleware.CSRFProtection())
+	router.Use(middleware.CSRFTokenProvider())
 
 	// Iniciar worker pool (4 workers)
 	imageProcessor := jobs.NewImageProcessor(4)
@@ -149,14 +152,18 @@ func main() {
 	orderController := controller.NewOrderController(orderUsecase, notificationHub)
 	cartController := controller.NewCartController(cartUsecase, orderUsecase, notificationHub)
 	notificationController := controller.NewNotificationController(notificationHub)
+	healthController := controller.NewHealthController(dbConnection)
 
 	// Rotas públicas
-	authLimiter := middleware.NewRateLimiter(5, 1*time.Minute) // 5 tentativas por minuto
+	authLimiter := middleware.NewRateLimiter(5, 1*time.Minute)      // 5 req/min
+	refreshLimiter := middleware.NewRateLimiter(10, 1*time.Minute)  // 10 req/min
+	
 	public := router.Group("/api")
 	{
+		public.GET("/health", healthController.Health)
 		public.POST("/signup", authLimiter.Middleware(), authController.Signup)
 		public.POST("/login", authLimiter.Middleware(), authController.Login)
-		public.POST("/refresh", authController.RefreshToken)
+		public.POST("/refresh", refreshLimiter.Middleware(), authController.RefreshToken)
 		public.POST("/logout", authController.Logout)
 	}
 
@@ -202,6 +209,24 @@ func main() {
 		Handler: router,
 	}
 	srv.RegisterOnShutdown(notificationHub.Close)
+
+	// HTTPS Redirect em produção
+	env := os.Getenv("ENV")
+	if env == "production" {
+		go func() {
+			slog.Info("HTTP redirect server rodando na porta 80")
+			redirectServer := &http.Server{
+				Addr: ":80",
+				Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					target := "https://" + r.Host + r.RequestURI
+					http.Redirect(w, r, target, http.StatusMovedPermanently)
+				}),
+			}
+			if err := redirectServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				slog.Error("erro no redirect server", "error", err)
+			}
+		}()
+	}
 
 	// 👇 Rodar servidor em goroutine
 	go func() {
