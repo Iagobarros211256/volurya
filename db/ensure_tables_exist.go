@@ -32,3 +32,47 @@ func EnsureTablesExist(db *sql.DB) error {
 	}
 	return nil
 }
+
+/*
+
+
+
+ Duplicação do schema com as migrations
+Essa função recria manualmente tabelas que já existem nas migrations. Isso significa que o schema está definido em dois lugares — qualquer alteração precisa ser feita em ambos. Já está desatualizado:
+
+users aqui não tem updated_at
+products aqui não tem image_url
+Nenhuma das outras tabelas está incluída (orders, carts, cart_items, refresh_tokens, payment_records)
+
+A solução correta é usar as próprias migrations nos testes:
+gofunc SetupTestDB() *sql.DB {
+    db := connectTestDB()
+    if err := RunMigrations(db); err != nil {
+        panic(err)
+    }
+    return db
+}
+
+🔴 Erros não wrappados
+goreturn err
+Sem contexto de qual query falhou:
+goif _, err := db.Exec(q); err != nil {
+    return fmt.Errorf("ensure tables failed: %w", err)
+}
+
+🟡 Schema de teste diverge do schema de produção
+users aqui usa TIMESTAMP sem timezone, mas a migration de produção usa TIMESTAMP WITH TIME ZONE em products. Testes rodando com schema diferente do produção podem passar localmente e falhar em produção.
+
+🟡 Formatação inconsistente das queries
+go`CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    			        // linha em branco com tabs
+    email TEXT...
+Indentação mista entre as duas queries — tabs vs espaços, alinhamentos diferentes.
+
+🟢 Função deveria não existir
+Com RunMigrations já disponível no projeto, EnsureTablesExist é redundante. O único caso de uso é nos testes, e mesmo assim deveria usar as migrations reais. Candidate a remoção completa.
+
+
+
+*/

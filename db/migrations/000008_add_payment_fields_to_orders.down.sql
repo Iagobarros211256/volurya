@@ -8,3 +8,17 @@ ALTER TABLE orders
 DROP COLUMN IF EXISTS updated_at,
 DROP COLUMN IF EXISTS payment_status,
 DROP COLUMN IF EXISTS payment_intent_id;
+
+
+/*
+
+
+payment_records sem CASCADE
+sqlDROP TABLE IF EXISTS payment_records;
+Se payment_records for referenciada por alguma tabela futura, vai falhar. Mantenha o padrão:
+sqlDROP TABLE IF EXISTS payment_records CASCADE;
+
+
+
+
+*/

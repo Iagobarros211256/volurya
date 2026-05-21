@@ -345,3 +345,52 @@ var SwaggerInfo = &swag.Spec{
 func init() {
 	swag.Register(SwaggerInfo.InstanceName(), SwaggerInfo)
 }
+
+/*
+
+
+Arquivo gerado automaticamente — não deve ser editado manualmente. Análise focada no que o swagger revela sobre a API:
+
+🔴 Rotas de produtos, carrinho, orders e pagamento não documentadas
+O swagger só tem auth e health. Faltam completamente:
+
+GET/POST/PUT/DELETE /products
+GET/POST/PUT/DELETE /cart/items
+POST /orders
+POST /checkout
+POST /webhook
+GET /events
+
+Isso indica que as anotações // @Router estão ausentes nesses controllers — o swagger gerado é inútil como documentação da API.
+
+🔴 AuthResponse expõe tokens no schema
+json"access_token": { "type": "string" },
+"refresh_token": { "type": "string" }
+Confirma o problema apontado no auth_controller.go — tokens no body. Se migrar para cookies HttpOnly, esse schema muda e o swagger precisa ser regenerado.
+
+🟡 Swagger em produção
+Como apontado no main.go, o swagger está acessível sem autenticação. Esse arquivo confirma que expõe detalhes de schemas, endpoints e estrutura da API publicamente.
+
+🟡 BasePath: "/api" mas rotas documentadas sem /api
+json"host": "api.volurya.com",
+"basePath": "/api",
+"paths": {
+    "/login": { ... },   // na prática é /api/login
+    "/health": { ... }   // mas health está em /health, não /api/health
+/health no código está registrado fora do grupo /api, então a documentação está incorreta para esse endpoint — o path real é /health, não /api/health.
+
+🟡 Schemes incluem http
+json"schemes": ["https", "http"]
+Em produção só HTTPS deveria ser listado. HTTP está incluído provavelmente por conveniência de desenvolvimento mas documenta um canal inseguro como suportado.
+
+🟢 Arquivo não deveria estar no controle de versão
+docs/docs.go é gerado por swag init e deveria estar no .gitignore. Commitar arquivos gerados causa diffs desnecessários e conflitos de merge. Adicione ao .gitignore:
+docs/docs.go
+docs/swagger.json
+docs/swagger.yaml
+E gere no CI ou no build.
+
+
+
+
+*/

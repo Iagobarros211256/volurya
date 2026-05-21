@@ -356,3 +356,80 @@ func ProcessImageSync(fileData []byte) ([]byte, error) {
 func (ip *ImageProcessor) Shutdown() error {
 	return ip.pool.Close()
 }
+
+/*
+
+
+🔴 Race condition no Close()
+gofunc (p *ImageWorkerPool) Close() error {
+    p.cancel()      // cancela context
+    close(p.jobs)   // fecha canal
+    p.wg.Wait()
+p.cancel() e close(p.jobs) disparados juntos causam race condition — um worker pode estar no select e receber tanto ctx.Done() quanto um job do canal fechado simultaneamente. O correto é cancelar o context e deixar os workers drenarem naturalmente, sem fechar o canal:
+gofunc (p *ImageWorkerPool) Close() error {
+    p.cancel()
+    p.wg.Wait()  // workers param quando ctx.Done() é recebido
+    return nil
+}
+
+🔴 close(p.jobs) com jobs pendentes na fila
+Se houver 50 jobs na fila e Close() for chamado, os jobs pendentes são descartados silenciosamente. Workers que ainda estão processando vão tentar ler do canal fechado. Decida explicitamente: drena a fila ou descarta:
+go// Opção 1: drena fila antes de fechar
+// Opção 2: documenta que jobs pendentes são descartados
+
+🔴 resizeImageAspectRatio usa nearest-neighbor mas comenta bilinear
+go// Usa interpolação linear (bilinear) para melhor qualidade
+func resizeImageAspectRatio(...) {
+    // Simples nearest-neighbor scaling  ← contradiz o comentário
+Nearest-neighbor produz imagens pixeladas em downscaling. O comentário promete bilinear mas a implementação é nearest-neighbor. Para imagens de produto isso é qualidade visivelmente inferior. Use golang.org/x/image/draw:
+goimport "golang.org/x/image/draw"
+
+dst := image.NewRGBA(image.Rect(0, 0, newWidth, newHeight))
+draw.BiLinear.Scale(dst, dst.Bounds(), src, src.Bounds(), draw.Over, nil)
+
+🔴 Divisão por zero em resizeImageAspectRatio
+goxRatio := float64(srcWidth-1) / float64(newWidth-1)
+yRatio := float64(srcHeight-1) / float64(newHeight-1)
+Se newWidth == 1 ou newHeight == 1, divisão por zero resulta em +Inf. Adicione guard:
+goif newWidth <= 1 || newHeight <= 1 {
+    return src
+}
+
+🟡 StorageCallback no job cria acoplamento duplo
+O product_controller.go já tem um OnComplete callback que faz o upload para R2. StorageCallback é um segundo mecanismo para a mesma coisa — dois callbacks para storage é confuso. Escolha um padrão.
+
+🟡 Buffer de 100 jobs hardcoded
+gojobs: make(chan ImageJob, 100)
+Para uma loja pequena é suficiente, mas deveria ser configurável:
+gofunc NewImageWorkerPool(numWorkers, bufferSize int) *ImageWorkerPool {
+
+🟡 processImageJob decodifica a imagem duas vezes
+goimgConfig, format, err := image.DecodeConfig(bytes.NewReader(job.FileData))
+// ...
+fullImg, _, err := image.Decode(bytes.NewReader(job.FileData))
+DecodeConfig lê apenas o header. Decode lê o arquivo completo. Duas leituras do mesmo buffer. Dá pra validar dimensões depois de Decode:
+gofullImg, format, err := image.Decode(bytes.NewReader(job.FileData))
+bounds := fullImg.Bounds()
+if bounds.Dx() > 8000 || bounds.Dy() > 8000 { ... }
+
+🟡 TargetSize validado após compressão sem retry
+goif job.TargetSize > 0 && len(processedData) > job.TargetSize {
+    return nil, fmt.Errorf("imagem comprimida ainda acima do limite...")
+}
+Se a imagem comprimida com qualidade 85 ainda excede o limite, retorna erro. Poderia tentar qualidade menor automaticamente:
+gofor quality > 10 && len(processedData) > job.TargetSize {
+    quality -= 10
+    // recomprimir
+}
+
+🟢 ProcessImageSync exportada mas processImageJob não
+gofunc ProcessImageSync(fileData []byte) ([]byte, error) { ... }  // exportada
+func processImageJob(job ImageJob) ([]byte, error) { ... }       // não exportada
+ProcessImageSync usa valores hardcoded (1200x1200, 85%) sem possibilidade de customização. Se for uma API pública do pacote, deveria aceitar parâmetros ou um ImageJob.
+
+🟢 ctx local criado mas nunca usado para cancelamento
+goctx := context.Background()
+// passado apenas para logs, nunca para operações canceláveis
+O context nos logs é correto, mas nenhuma operação dentro de processImageJob respeita cancelamento. Se o worker for encerrado durante o processamento, a função continua até terminar.
+
+*/
