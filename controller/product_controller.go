@@ -333,3 +333,90 @@ func (pc *ProductController) UploadImage(c *gin.Context) {
 		"product_id": productID,
 	})
 }
+
+/*
+
+
+🔴 ctx.JSON(http.StatusBadRequest, err) serializa o erro Go diretamente
+Aparece em vários lugares:
+goctx.JSON(http.StatusBadRequest, err)
+ctx.JSON(http.StatusInternalServerError, err)
+err em Go serializa como {} vazio em JSON — o cliente recebe um objeto sem informação nenhuma. Use sempre gin.H{"error": "mensagem"}.
+
+🔴 sql.ErrNoRows vazando para o controller
+goif errors.Is(err, sql.ErrNoRows) {
+    ctx.JSON(http.StatusNotFound, ...)
+}
+O controller não deveria conhecer detalhes de implementação do banco. Esse mapeamento pertence ao repositório ou usecase, que deveria retornar usecase.ErrProductNotFound. O controller só faz errors.Is(err, usecase.ErrProductNotFound).
+
+🔴 c.Request.Context() usado dentro do callback assíncrono
+goOnComplete: func(processedData []byte, err error) {
+    logger.Log.LogAttrs(
+        c.Request.Context(),  // context já cancelado
+O callback roda depois que o handler retornou — o contexto da requisição já foi cancelado. Use context.Background() ou um contexto de aplicação com timeout:
+goctx := context.Background()
+logger.Log.LogAttrs(ctx, slog.LevelError, ...)
+
+🔴 io.Copy sem tratamento de erro
+gobuf := &bytes.Buffer{}
+io.Copy(buf, fileData)  // erro ignorado
+Se a leitura falhar parcialmente, buf terá dados corrompidos que serão processados silenciosamente:
+goif _, err := io.Copy(buf, fileData); err != nil {
+    c.JSON(http.StatusInternalServerError, gin.H{"error": "erro ao ler arquivo"})
+    return
+}
+
+🔴 Dependências concretas — padrão recorrente
+goproductUsecase *usecase.ProductUsecase
+productRepo    *repository.ProductRepository
+r2Storage      *storage.R2Storage
+imageProcessor *jobs.ImageProcessor
+Quatro dependências concretas. Todas deveriam ser interfaces.
+
+🟡 Validação de Content-Type bypassável
+goif !allowedTypes[file.Header.Get("Content-Type")] {
+O Content-Type vem do cliente e pode ser forjado. Valide o conteúdo real do arquivo com http.DetectContentType:
+gobuf := make([]byte, 512)
+n, _ := fileData.Read(buf)
+realType := http.DetectContentType(buf[:n])
+if !allowedTypes[realType] {
+    c.JSON(http.StatusBadRequest, gin.H{"error": "tipo de arquivo não permitido"})
+    return
+}
+
+🟡 Chave R2 baseada em timestamp pode colidir
+gokey := fmt.Sprintf("products/%d.%s", time.Now().UnixNano(), ext)
+Em uploads simultâneos, UnixNano pode repetir. Use UUID ou combine com productID:
+gokey := fmt.Sprintf("products/%d_%s.%s", productID, uuid.New().String(), ext)
+
+🟡 GetProducts converte int para string para passar ao usecase
+golimit, err := strconv.Atoi(limitStr)       // string → int
+// ...
+p.productUsecase.GetProducts(strconv.Itoa(limit), cursor)  // int → string novamente
+O usecase recebe string mas o controller já validou como int. A assinatura do usecase deveria aceitar int diretamente.
+
+🟡 BindJSON vs ShouldBindJSON inconsistente
+goctx.BindJSON(&product)      // CreateProduct — escreve 400 automaticamente e continua
+ctx.ShouldBindJSON(&body)   // UpdateProduct — retorna erro para tratar
+BindJSON escreve o status 400 no header mas não interrompe o handler — o código continua executando após o return apenas se você verificar o erro. Padronize com ShouldBindJSON em todos os lugares.
+
+🟡 Comentários de código temporários
+goimageProcessor *jobs.ImageProcessor // NOVO
+// No NewProductController
+return &ProductController{ // MAIÚSCULO
+// "image/webp": true,  // Remover por enquanto
+Resquícios de desenvolvimento que não deveriam estar no código.
+
+🟢 userID extraído mas não validado em CreateProduct e Delete
+gouserID := ctx.GetInt("user_id")
+Mesmo problema recorrente — ID 0 passa silenciosamente.
+
+🟢 Mensagens de erro em português e sem acentuação consistente
+go"Id do produto nao pode ser nulo"     // sem acento
+"ID inválido"                          // com acento
+"arquivo não encontrado"               // com acento
+Inconsistência na própria língua além da mistura português/inglês já mencionada.
+
+
+
+*/

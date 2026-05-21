@@ -44,12 +44,22 @@ func NewPaymentController(
 // @Router /api/checkout [post]
 func (pc *PaymentController) Checkout(c *gin.Context) {
 	// Verify HTTPS in production
+	//Esse header pode ser forjado
+	//  se não houver um proxy confiável na frente.
+	// Só é seguro se o load balancer/proxy sobrescreve esse header.
+	// Documente essa suposição ou use configuração no nível do proxy
 	if GetAppEnv() == "production" && c.Request.Header.Get("X-Forwarded-Proto") != "https" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "HTTPS required for checkout"})
 		return
 	}
 
 	// Get JWT token from context
+	//O middleware JWT já validou o token e
+	// setou user_id no contexto. Revalidar aqui significa
+	// que o token é verificado duas vezes — e pior,
+	// c.GetString("token") provavelmente retorna
+	// vazio porque o middleware seta user_id, não token.
+	// Isso pode fazer o checkout falhar para todos os usuários:
 	tokenString := c.GetString("token")
 	if tokenString == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
@@ -83,14 +93,19 @@ func (pc *PaymentController) Checkout(c *gin.Context) {
 	}
 
 	// Create order
+	//Se o Stripe falhar após a ordem ser criada,
+	// fica um pedido sem payment intent no banco. Implemente compensação
 	orderDetail, err := pc.paymentUsecase.CreateOrderForCheckout(userID, req.Items)
 	if err != nil {
 		slog.Error("failed to create order", "error", err, "user_id", userID)
+		//Erros de banco vazam para o cliente. Mapeie erros conhecidos e use 500 para erros inesperado
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Create Stripe payment intent
+	//TotalPrice provavelmente é float64.
+	//  Multiplicação de float pode gerar imprecisão (19.99 * 100 = 1998.9999...). Use arredondamento
 	amountInCents := int64(orderDetail.TotalPrice * 100)
 
 	params := &stripe.PaymentIntentParams{
@@ -99,7 +114,7 @@ func (pc *PaymentController) Checkout(c *gin.Context) {
 		Description: stripe.String(
 			"Volurya Order #" + strconv.Itoa(orderDetail.ID),
 		),
-		ReceiptEmail: stripe.String(req.UserEmail),
+		ReceiptEmail:        stripe.String(req.UserEmail),
 		StatementDescriptor: stripe.String("VOLURYA SHOP"),
 	}
 
@@ -123,6 +138,9 @@ func (pc *PaymentController) Checkout(c *gin.Context) {
 	}
 
 	// Create payment record for tracking
+	//Falhar silenciosamente num registro financeiro é
+	// perigoso para auditoria e reconciliação.
+	// Pelo menos registre com slog.Error e considere uma fila de retry
 	_, err = pc.paymentUsecase.CreatePaymentRecord(
 		orderDetail.ID,
 		pi.ID,
@@ -146,13 +164,18 @@ func (pc *PaymentController) Checkout(c *gin.Context) {
 		PaymentIntentID: pi.ID,
 		Amount:          int(amountInCents),
 		Currency:        "BRL",
-		PublishableKey:  config.GetStripePublishableKey(),
+		//A publishable key não deveria variar por
+		// request — ela é uma constante pública do frontend.
+		// Retorná-la no checkout polui a resposta e incentiva o
+		// frontend a não a configurar estaticamente. Remova da resposta e configure no frontend diretamente
+		PublishableKey: config.GetStripePublishableKey(),
 	}
 
 	c.JSON(http.StatusCreated, response)
 }
 
 // GetAppEnv returns the application environment
+// Função utilitária de configuração não pertence ao pacote controller. Mova para o pacote config
 func GetAppEnv() string {
 	env := os.Getenv("APP_ENV")
 	if env == "" {
@@ -200,7 +223,10 @@ func (pc *PaymentController) Webhook(c *gin.Context) {
 	}
 
 	// For production, use: webhook.ConstructEvent(payload, sig, secret)
-	// This is simplified for MVP
+	// Qualquer pessoa pode enviar um POST
+	// para /webhook com {"type": "payment_intent.succeeded"} e
+	// marcar pedidos como pagos sem pagar nada. Isso é uma falha crítica de segurança financeira.
+	// Não é MVP — é inaceitável em produção
 	var event models.WebhookEvent
 	if err := json.Unmarshal(payload, &event); err != nil {
 		slog.Error("failed to parse webhook event", "error", err)
@@ -211,6 +237,7 @@ func (pc *PaymentController) Webhook(c *gin.Context) {
 	switch event.Type {
 	case "payment_intent.succeeded":
 		// Extract payment intent from event data
+		//Se event.Data["object"] for nil ou não for map[string]interface{}, isso causa panic em produção. Desempacote com segurança
 		if piID, ok := event.Data["object"].(map[string]interface{})["id"].(string); ok {
 			err := pc.paymentUsecase.HandlePaymentSuccess(piID)
 			if err != nil {
