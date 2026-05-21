@@ -8,10 +8,14 @@ import (
 	"github.com/stripe/stripe-go/v76"
 )
 
+//Variáveis globais exportadas expõem as chaves
+//Qualquer pacote pode ler e modificar config.StripeSecretKey = "outra_coisa".
+// Use variáveis não-exportadas e acesse apenas pelos getters
+
 var (
-	StripeSecretKey     string
+	StripeSecretKey      string
 	StripePublishableKey string
-	StripeWebhookSecret string
+	StripeWebhookSecret  string
 )
 
 // InitStripe initializes the Stripe SDK with API keys from environment variables
@@ -53,6 +57,10 @@ func GetStripeWebhookSecret() string {
 }
 
 // publishableKeyPrefix returns the first 10 chars of the key for logging
+// A publishable key é pública por definição (pk_live_...), então não é um
+// risco direto. Mas logar partes de chaves cria um hábito ruim —
+// se alguém copiar esse padrão para a secret key (sk_live_...), vira problema.
+// Remova ou deixe apenas "publishable_key_set", StripePublishableKey != "".
 func publishableKeyPrefix(key string) string {
 	if key == "" {
 		return "not_set"
@@ -71,6 +79,8 @@ func IsStripeEnabled() bool {
 // ValidateWebhookSignature validates a Stripe webhook signature
 // This is used to ensure webhooks are from Stripe
 func ValidateWebhookSignature(payload []byte, signature string) bool {
+	//Retornar false silenciosamente pode fazer o controller rejeitar webhooks
+	// legítimos sem clareza do motivo. Retornar um error seria mais expressivo.
 	if StripeWebhookSecret == "" {
 		slog.Warn("webhook signature validation skipped: STRIPE_WEBHOOK_SECRET not configured")
 		return false
@@ -79,4 +89,19 @@ func ValidateWebhookSignature(payload []byte, signature string) bool {
 	// Import the webhook signing package for proper validation
 	// For now, this is a placeholder - actual validation done in controller
 	return signature != ""
+	//Isso retorna true para qualquer string não-vazia. Se alguém chamar essa função achando que valida o webhook, aceita requisições forjadas.
+	//  O Stripe já fornece a validação pronta — use diretamente ou remova essa função.
 }
+
+//Como já mencionado no config.go, um struct centralizado resolveria vários desses problemas:
+//gotype Config struct {
+//    AccessTokenDuration  time.Duration
+//    RefreshTokenDuration time.Duration
+//    Stripe               StripeConfig
+//}
+
+//type StripeConfig struct {
+//    SecretKey      string
+//    PublishableKey string
+//    WebhookSecret  string
+//}

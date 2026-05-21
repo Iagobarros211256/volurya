@@ -6,8 +6,23 @@ import (
 	"time"
 )
 
+//À medida que o projeto cresce, ter várias funções GetXxx()
+//  espalhadas fica difícil de gerenciar.
+// Um padrão comum em Go é carregar tudo uma vez no startup
+
+// Sugestões:
+// nao existe limite máximo nas durações
+// Um .env mal configurado com ACCESS_TOKEN_DURATION_MINUTES=99999 geraria tokens válidos
+//
+//	por ~69 dias sem nenhum aviso.
+//
+// Adicione um teto
 func GetAccessTokenDuration() time.Duration {
+	//Se alguém configurar ACCESS_TOKEN_DURATION_MINUTES=abc,
+	// o sistema usa o fallback sem nenhum aviso. Em produção isso pode ser difícil de debugar
 	val := os.Getenv("ACCESS_TOKEN_DURATION_MINUTES")
+	//Os valores padrão aparecem duas vezes em cada função (no if val == "" e no if err).
+	//  Uma constante elimina isso
 	if val == "" {
 		return 15 * time.Minute
 	}

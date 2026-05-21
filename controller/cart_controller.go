@@ -9,6 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Dependências concretas em vez de interfaces
+// Impede testes unitários sem instanciar dependências reais. Defina interfaces locais.
 type CartController struct {
 	cartUsecase  *usecase.CartUsecase
 	orderUsecase *usecase.OrderUsecase
@@ -29,6 +31,7 @@ func (cc *CartController) GetCart(c *gin.Context) {
 
 	cart, err := cc.cartUsecase.GetCart(userID)
 	if err != nil {
+		//Erros internos vazando para o cliente. Erros de banco, queries SQL, stack traces podem vazar. Mapeie erros conhecidos
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -52,16 +55,26 @@ func (cc *CartController) AddItem(c *gin.Context) {
 
 	item, err := cc.cartUsecase.AddItem(userID, body.ProductID, body.Quantity)
 	if err != nil {
+		// Erros internos vazando para o cliente
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
+	// publish chamado após c.JSON / c.Status já escritos.
+	//
+	//Isso não causa erro visível mas é uma inversão de responsabilidade
+	// — a notificação deveria ser disparada antes ou de forma desacoplada.
+	// Mais importante: se publish bloquear ou der erro,
+	// o handler já respondeu e não há como tratar.
+	// Considere disparar em goroutine ou garantir que é sempre non-blocking
 	c.JSON(http.StatusCreated, item)
 	cc.publish(userID, "cart_item_added", "Produto adicionado ao carrinho")
 }
 
 // UpdateItem atualiza a quantidade de um item
 func (cc *CartController) UpdateItem(c *gin.Context) {
+	// c.GetInt("user_id") retorna 0 silenciosamente.
+	//Se o middleware não rodou ou falhou em setar user_id, retorna 0 sem erro.
+	// Usuário com ID 0 pode acessar ou modificar dados de outros. Use o helper tipado sugerido anteriormente:
 	userID := c.GetInt("user_id")
 
 	itemID, err := strconv.Atoi(c.Param("itemId"))
@@ -69,7 +82,7 @@ func (cc *CartController) UpdateItem(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid item id"})
 		return
 	}
-
+	//Structs anônimas nos handlers poderiam ser tipos nomeados
 	var body struct {
 		Quantity int `json:"quantity" binding:"required,min=1"`
 	}
@@ -103,7 +116,9 @@ func (cc *CartController) RemoveItem(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
+	//RemoveItem notifica depois de c.Status(204).204 No Content não tem body,
+	// então está correto, mas a notificação ainda ocorre após a resposta.
+	// O mesmo ponto do publish em goroutine se aplica aqui.
 	c.Status(http.StatusNoContent)
 	cc.publish(userID, "cart_item_removed", "Produto removido do carrinho")
 }
@@ -111,7 +126,10 @@ func (cc *CartController) RemoveItem(c *gin.Context) {
 // Checkout finaliza o carrinho
 func (cc *CartController) Checkout(c *gin.Context) {
 	userID := c.GetInt("user_id")
-
+	//O cartUsecase recebendo um orderUsecase como parâmetro de
+	// método indica acoplamento circular entre usecases.
+	// O correto é injetar orderUsecase no cartUsecase via construtor,
+	// ou criar um CheckoutUsecase dedicado que orquestra os dois.
 	paymentURLs, err := cc.cartUsecase.Checkout(userID, cc.orderUsecase)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -135,3 +153,10 @@ func (cc *CartController) publish(userID int, eventType string, message string) 
 		Message: message,
 	})
 }
+
+// Status codes inconsistentes nos erros
+//AddItem, UpdateItem, RemoveItem e Checkout todos retornam 400
+// para qualquer erro do usecase —
+// incluindo produto não encontrado (404),
+// estoque insuficiente (422), e erros internos (500).
+// O mapeamento correto melhora a experiência do cliente da API.

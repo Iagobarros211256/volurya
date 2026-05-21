@@ -9,7 +9,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Poderia expor mais informações úteis
+// Health checks robustos costumam incluir uptime e dependências externas. Sem exagerar
+
 type HealthController struct {
+	//db *sql.DB concreto dificulta testes
+	//Mesmo padrão dos outros controllers. Com uma interface seria possível mockar o Ping:
 	db *sql.DB
 }
 
@@ -33,6 +38,7 @@ type HealthResponse struct {
 // @Failure 503 {object} HealthResponse
 // @Router /health [get]
 func (h *HealthController) Health(c *gin.Context) {
+	//O controller tem Health() mas o teste chama HealthCheck()  mas que porra eu tava pensando aqui
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
@@ -53,6 +59,7 @@ func (h *HealthController) Health(c *gin.Context) {
 		Status:    status,
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
 		Database:  dbStatus,
-		Version:   "1.0.0",
+		//Em produção a versão deveria vir de uma variável injetada no build.E injetada no controller via construtor.
+		Version: "1.0.0",
 	})
 }

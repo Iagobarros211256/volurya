@@ -93,10 +93,13 @@ func main() {
 	})
 
 	// Ping de saúde
+	///ping e /swagger sem proteção
+	//Swagger em produção expõe toda a estrutura da API. O padrão é desabilitar em produção
 	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "pong"})
 	})
 
+	///metrics exposto sem autenticação  BUG!!!!!
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
@@ -130,6 +133,11 @@ func main() {
 		slog.Error("failed to run migrations", "error", err)
 		os.Exit(1)
 	}
+
+	//db.BootstrapAdminUser no startup é arriscado
+	//Criar usuário admin automaticamente no boot pode ser um vetor de ataque se
+	//a lógica não for idempotente e bem protegida. Verifique se verifica existência antes de criar,
+	//  e se a senha vem de variável de ambiente.
 	if err := db.BootstrapAdminUser(dbConnection); err != nil {
 		slog.Error("failed to bootstrap admin user", "error", err)
 		os.Exit(1)
@@ -155,7 +163,7 @@ func main() {
 		productUsecase,
 		productRepository,
 		r2Storage,
-		imageProcessor, // NOVO - passe o processor aqui
+		imageProcessor, // NOVO - passe o processor aqui. esqueci o que isso significa
 	)
 	authController := controller.NewAuthController(authUseCase)
 	orderController := controller.NewOrderController(orderUsecase, notificationHub)
@@ -165,16 +173,19 @@ func main() {
 	paymentController := controller.NewPaymentController(paymentUsecase)
 
 	// Rotas públicas
-	authLimiter := middleware.NewRateLimiter(5, 1*time.Minute)      // 5 req/min
-	refreshLimiter := middleware.NewRateLimiter(10, 1*time.Minute)  // 10 req/min
-	
+	authLimiter := middleware.NewRateLimiter(5, 1*time.Minute)     // 5 req/min
+	refreshLimiter := middleware.NewRateLimiter(10, 1*time.Minute) // 10 req/min
+
 	// Webhook route (public, but needs signature validation)
+	//variáveis usadas antes de serem declaradas BUG!!!!
 	public.POST("/webhook", paymentController.Webhook)
-	
+
+	//variáveis usadas antes de serem declaradas BUG!!!!
 	// Payment routes (protected)
 	protected.POST("/checkout", paymentController.Checkout)
 
 	// Rotas protegidas
+	////variáveis usadas antes de serem declaradas BUG!!!!
 	protected := router.Group("/api")
 	protected.Use(auth.Middleware())
 	{ //products protected routes
@@ -208,6 +219,7 @@ func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
+		// Porta hardcoded como fallback está ok, mas poderia ser constante
 	}
 
 	// 👇 HTTP server custom
@@ -239,6 +251,7 @@ func main() {
 	go func() {
 		slog.Info("API Volurya rodando na porta", "port", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			//porque esse log ainda existe?  Padronize tudo com slog para manter logs estruturados e consistentes.
 			log.Fatalf("erro ao iniciar servidor: %v", err)
 		}
 	}()
@@ -251,6 +264,8 @@ func main() {
 	slog.Info("Desligando servidor...")
 
 	// 👇 Timeout pra finalizar requisições
+	//Se houver requisições longas (upload de imagem, checkout),
+	// 5s pode não ser suficiente. Considere 15-30s, ou tornar configurável via env.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
