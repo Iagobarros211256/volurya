@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/gin-gonic/gin"
 )
 
 type mockProductRepository struct {
@@ -39,12 +41,15 @@ func TestAuthController_Login_InvalidEmail(t *testing.T) {
 	body, _ := json.Marshal(payload)
 	req := httptest.NewRequest(http.MethodPost, "/api/login", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp := httptest.NewRecorder()
+	w := httptest.NewRecorder()
 
-	authController.Login(&mockGinContext{recorder: resp, request: req})
+	c, _ := gin.CreateTestContext(w)
+	c.Request = req
 
-	if resp.Code != http.StatusBadRequest {
-		t.Fatalf("expected status 400, got %d", resp.Code)
+	authController.Login(c)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", w.Code)
 	}
 }
 
@@ -61,12 +66,15 @@ func TestAuthController_Login_MissingFields(t *testing.T) {
 	body, _ := json.Marshal(payload)
 	req := httptest.NewRequest(http.MethodPost, "/api/login", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp := httptest.NewRecorder()
+	w := httptest.NewRecorder()
 
-	authController.Login(&mockGinContext{recorder: resp, request: req})
+	c, _ := gin.CreateTestContext(w)
+	c.Request = req
 
-	if resp.Code != http.StatusBadRequest {
-		t.Fatalf("expected status 400, got %d", resp.Code)
+	authController.Login(c)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", w.Code)
 	}
 }
 
@@ -81,9 +89,4 @@ func (m *mockUserRepository) GetByEmail(email string) (*models.User, error) {
 func (m *mockUserRepository) Create(user models.User) (int, error) {
 	m.users[user.Email] = &user
 	return 1, nil
-}
-
-type mockGinContext struct {
-	recorder *httptest.ResponseRecorder
-	request  *http.Request
 }
