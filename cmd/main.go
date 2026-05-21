@@ -2,6 +2,7 @@ package main
 
 import (
 	"api/auth"
+	"api/config"
 	"api/controller"
 	"api/db"
 	"api/jobs"
@@ -118,6 +119,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Initialize Stripe
+	if err := config.InitStripe(); err != nil {
+		slog.Warn("Stripe initialization warning", "error", err)
+		// Don't exit - Stripe is optional for development
+	}
+
 	// Migrations
 	if err := db.RunMigrations(dbConnection); err != nil {
 		slog.Error("failed to run migrations", "error", err)
@@ -134,12 +141,14 @@ func main() {
 	orderRepository := repository.NewOrderRepository(dbConnection)
 	refreshTokenRepository := repository.NewRefreshTokenRepository(dbConnection)
 	cartRepository := repository.NewCartRepository(dbConnection)
+	paymentRepository := repository.NewPaymentRepository(dbConnection)
 
 	// Usecases
 	productUsecase := usecase.NewProductUsecase(productRepository)
 	authUseCase := usecase.NewAuthUsecase(userRepository, refreshTokenRepository)
 	orderUsecase := usecase.NewOrderUsecase(orderRepository, productRepository)
 	cartUsecase := usecase.NewCartUsecase(cartRepository, productRepository)
+	paymentUsecase := usecase.NewPaymentUsecase(orderRepository, paymentRepository, productRepository)
 
 	// Controllers
 	productController := controller.NewProductController(
@@ -153,19 +162,17 @@ func main() {
 	cartController := controller.NewCartController(cartUsecase, orderUsecase, notificationHub)
 	notificationController := controller.NewNotificationController(notificationHub)
 	healthController := controller.NewHealthController(dbConnection)
+	paymentController := controller.NewPaymentController(paymentUsecase)
 
 	// Rotas públicas
 	authLimiter := middleware.NewRateLimiter(5, 1*time.Minute)      // 5 req/min
 	refreshLimiter := middleware.NewRateLimiter(10, 1*time.Minute)  // 10 req/min
 	
-	public := router.Group("/api")
-	{
-		public.GET("/health", healthController.Health)
-		public.POST("/signup", authLimiter.Middleware(), authController.Signup)
-		public.POST("/login", authLimiter.Middleware(), authController.Login)
-		public.POST("/refresh", refreshLimiter.Middleware(), authController.RefreshToken)
-		public.POST("/logout", authController.Logout)
-	}
+	// Webhook route (public, but needs signature validation)
+	public.POST("/webhook", paymentController.Webhook)
+	
+	// Payment routes (protected)
+	protected.POST("/checkout", paymentController.Checkout)
 
 	// Rotas protegidas
 	protected := router.Group("/api")
