@@ -1,31 +1,31 @@
- Volurya API
+# Volurya API
 
 Backend API in Go for managing band-related products (t-shirts, caps, socks, drumsticks, etc).  
 **Live deployment:** https://volurya.onrender.com
 
 Personal learning project / showcase built to practice real-world backend concepts.
 
-![Badge](https://img.shields.io/badge/Go-1.25-blue?logo=go&logoColor=white)
+![Badge](https://img.shields.io/badge/Go-1.23-blue?logo=go&logoColor=white)
 ![Badge](https://img.shields.io/badge/Gin-1.10-green)
 ![Badge](https://img.shields.io/badge/PostgreSQL-16-blue)
 ![Badge](https://img.shields.io/badge/Docker-Ready-blue)
 ![Badge](https://img.shields.io/badge/JWT-Authentication-blue)
+![Badge](https://img.shields.io/badge/Stripe-Payments-blue?logo=stripe&logoColor=white)
 ![Badge](https://img.shields.io/badge/Deploy-Render-success?logo=render&logoColor=white)
-
 
 # Documentação Volurya API
 
 ## Visão Geral
 
-- **[PRD](./volurya-prd.md)** — Requisitos de produto e escopo
-- **[Tech Spec](./volurya-tech-spec.md)** — Arquitetura técnica e decisões
-- **[ADRs](./architecture/)** — Architecture Decision Records
+- **[PRD](./docs/volurya-prd.md)** — Requisitos de produto e escopo
+- **[Tech Spec](./docs/volurya-tech-spec.md)** — Arquitetura técnica e decisões
+- **[ADRs](./docs/architecture/)** — Architecture Decision Records
 
 ## ADRs
 
-- [ADR 001 — Clean Architecture](./architecture/adr-001-clean-architecture.md)
-- [ADR 002 — JWT com Refresh Token Rotation](./architecture/adr-002-jwt-refresh-rotation.md)
-- [ADR 003 — Cloudflare R2 para Storage](./architecture/adr-003-cloudflare-r2.md)
+- [ADR 001 — Clean Architecture](./docs/architecture/adr-001-clean-architecture.md)
+- [ADR 002 — JWT com Refresh Token Rotation](./docs/architecture/adr-002-jwt-refresh-rotation.md)
+- [ADR 003 — Cloudflare R2 para Storage](./docs/architecture/adr-003-cloudflare-r2.md)
 
 ## 🎯 Project Goals
 
@@ -35,7 +35,7 @@ Personal learning project / showcase built to practice real-world backend concep
 - Build proper **unit + integration tests**
 - Standardize environment with **Docker**
 - Create a clean, explainable showcase project
-- **Security hardening** (email validation, rate limiting, CSRF protection)
+- **Security hardening** (email validation, rate limiting, CSRF protection, webhook validation)
 - **Full API documentation** (Swagger/OpenAPI)
 - **Enterprise-ready features** (health checks, request tracing, monitoring)
 
@@ -43,7 +43,7 @@ Personal learning project / showcase built to practice real-world backend concep
 
 - Base URL: https://volurya.onrender.com
 - Health check: https://volurya.onrender.com/ping → `{"message": "pong"}`
-- **Swagger UI**: https://volurya.onrender.com/swagger/index.html
+- **Swagger UI**: https://volurya.onrender.com/swagger/index.html (development only)
 
 **Note**: Render free tier has cold starts — first request after ~15 min inactivity may take 10–30 seconds.
 
@@ -65,26 +65,38 @@ git clone https://github.com/Iagobarros211256/volurya.git
 cd volurya
 ```
 
-Create a `.env` file in the root:
+Create a `.env` file in the root (see `.env.example`):
 
 ```env
-JWT_SECRET=your_secret_here
+APP_ENV=development
+
+JWT_SECRET=your_secret_here_min_32_chars
+ACCESS_TOKEN_DURATION_MINUTES=15
+REFRESH_TOKEN_DURATION_DAYS=7
+
 POSTGRES_HOST=volurya_postgres
 POSTGRES_PORT=5432
 POSTGRES_USER=volurya
-POSTGRES_PASSWORD=volurya
+POSTGRES_PASSWORD=your_postgres_password
 POSTGRES_DB=volurya_db
-PAGSEGURO_TOKEN=your_token_here
-PAGSEGURO_EMAIL=your_email_here
-PAGSEGURO_SANDBOX=true
-PAGSEGURO_WEBHOOK_URL=http://localhost:8080/api/webhook
-ACCESS_TOKEN_DURATION_MINUTES=15
-REFRESH_TOKEN_DURATION_DAYS=7
+
+STRIPE_SECRET_KEY=sk_test_your_key_here
+STRIPE_WEBHOOK_SECRET=whsec_your_secret_here
+
+R2_ACCESS_KEY_ID=your_r2_key
+R2_SECRET_ACCESS_KEY=your_r2_secret
+R2_ACCOUNT_ID=your_account_id
+R2_BUCKET_NAME=your_bucket_name
+R2_PUBLIC_URL=https://your-bucket.r2.dev
+
 BOOTSTRAP_ADMIN_EMAIL=admin@volurya.com
 BOOTSTRAP_ADMIN_PASSWORD=troque-esta-senha
+
+GRAFANA_ADMIN_USER=admin
+GRAFANA_ADMIN_PASSWORD=your_grafana_password
 ```
 
-`BOOTSTRAP_ADMIN_EMAIL` e `BOOTSTRAP_ADMIN_PASSWORD` são opcionais. Quando definidos, a API cria ou atualiza esse usuário com `role=admin` no startup; use isso no Render para ter um usuário de teste/admin no banco de produção sem gravar credenciais no código.
+`BOOTSTRAP_ADMIN_EMAIL` e `BOOTSTRAP_ADMIN_PASSWORD` são opcionais. Quando definidos, a API cria ou atualiza esse usuário com `role=admin` no startup.
 
 Start services:
 
@@ -111,9 +123,10 @@ Tables are created automatically by migrations on startup. No manual SQL command
 Quick checks:
 
 ```sql
-\dt                    -- list tables
-SELECT * FROM users;   -- see users
+\dt                      -- list tables
+SELECT * FROM users;     -- see users
 SELECT * FROM products;
+SELECT * FROM order_items;
 ```
 
 ## 🔐 Authentication Flow (JWT)
@@ -170,13 +183,21 @@ curl -X GET https://volurya.onrender.com/api/products \
 | POST | /api/refresh | Generate new token pair via refresh_token | No |
 | POST | /api/logout | Revoke refresh_token | No |
 | GET | /api/health | Healthcheck with DB status (200/503) | No |
+| POST | /api/webhook | Stripe webhook (signature validated) | No |
 | GET | /api/products | List products (cursor pagination) | Yes |
-| POST | /api/products | Create product (with ownership) | Yes |
+| POST | /api/products | Create product (admin only) | Yes |
 | GET | /api/products/:productId | Get product by ID | Yes |
-| PUT | /api/products/:productId | Update product | Yes |
-| DELETE | /api/products/:productId | Delete product (ownership check) | Yes |
-| GET | /ping | Healthcheck | No |
-| GET | /swagger/index.html | Swagger UI (OpenAPI 3.0) | No |
+| PUT | /api/products/:productId | Update product (admin only) | Yes |
+| DELETE | /api/products/:productId | Delete product (admin only) | Yes |
+| POST | /api/checkout | Create Stripe payment intent | Yes |
+| GET | /api/cart | View cart | Yes |
+| POST | /api/cart/items | Add item to cart | Yes |
+| PUT | /api/cart/items/:itemId | Update item quantity | Yes |
+| DELETE | /api/cart/items/:itemId | Remove item | Yes |
+| POST | /api/cart/checkout | Checkout cart | Yes |
+| GET | /api/events | SSE real-time notifications | Yes |
+| GET | /ping | Simple healthcheck | No |
+| GET | /swagger/\*any | Swagger UI (dev only) | No |
 
 ## 🧪 Tests
 
@@ -199,25 +220,88 @@ go test ./... -coverprofile=cover.out
 go tool cover -html=cover.out
 ```
 
-Includes:
-- Unit tests (usecases with mocked repo)
-- Integration tests (HTTP + real PostgreSQL)
-- DB setup/cleanup helpers
-- **20+ new tests** for security, validation, and health checks
-
 ## 🛠️ Architectural Decisions
 
 - Simplified Clean Architecture
 - JWT authentication with refresh token rotation
 - Token duration configurable via environment variables
 - Automatic migrations with golang-migrate
-- Real PostgreSQL in integration tests
-- Ownership enforcement on products (user_id)
+- Stripe for payments (webhook with signature validation)
+- Cloudflare R2 for image storage
 - Docker as standard environment
+- Prometheus + Grafana for monitoring
+- SSE for real-time notifications
 
-## ❄️ Current Status
+## ❄️ Status Atual
 
-Backend in active development — refresh token, migrations and env-based config implemented.
+Backend em desenvolvimento ativo.
+
+### ✅ Semana 0 — Infraestrutura e correções críticas
+- [x] Credenciais removidas do docker-compose.yml
+- [x] Bug de compilação do main.go corrigido
+- [x] Swagger desabilitado em produção
+- [x] /metrics protegido por IP
+- [x] log.Fatalf substituído por slog
+- [x] Shutdown timeout aumentado para 15s
+- [x] Prometheus coletando métricas corretamente
+
+### ✅ Semana 1 — Segurança financeira
+- [x] Webhook Stripe com validação real de assinatura
+- [x] PagSeguro removido completamente
+- [x] order_items persistidos no banco
+- [x] Estoque decrementado atomicamente (race condition protegida)
+- [x] CancelOrder para compensação de ordens órfãs
+- [x] HandlePaymentSuccess/Failed idempotentes
+- [x] JWT revalidado manualmente removido do checkout
+- [x] math.Round para conversão de centavos
+
+### 🔜 Semana 2 — Segurança geral
+- [ ] Tokens em cookies HttpOnly (XSS protection)
+- [ ] innerHTML → textContent no frontend (XSS prevention)
+- [ ] Interfaces nos usecases e repositories
+- [ ] Race condition e deadlock no rate limiter
+- [ ] request_id.go e logger.go unificados
+
+### 🔜 Semana 3 — Qualidade
+- [ ] go:embed para migrations
+- [ ] Testes reais nos controllers e usecases
+- [ ] Dois painéis admin unificados
+- [ ] image_url real na store
+
+## 🔒 Segurança
+
+- [x] Rate limiting nas rotas públicas (signup, login, refresh)
+- [x] CORS configurado por ambiente
+- [x] Email validation (RFC 5321)
+- [x] Password validation (8-128 chars)
+- [x] CSRF protection middleware
+- [x] HTTPS redirect em produção
+- [x] Stripe webhook signature validation
+- [x] /metrics protegido por IP
+- [x] Swagger desabilitado em produção
+- [ ] Tokens em cookies HttpOnly
+- [ ] Helmet headers
+
+## 📊 Observabilidade
+
+- [x] Logs estruturados com slog (JSON em produção)
+- [x] Request ID por requisição (UUID)
+- [x] Métricas com Prometheus (/metrics — acesso restrito)
+- [x] Grafana para visualização
+- [x] Health check com status do banco (200/503)
+
+### 🔧 Concorrência e Performance (Go avançado)
+
+- [x] Worker pool para processamento de imagens (goroutines + channels)
+- [x] Pipeline assíncrono (validar → redimensionar → comprimir → salvar no R2)
+- [x] SSE (Server-Sent Events) para notificações em tempo real
+
+### 💡 Por que essas features?
+
+Essas três implementações foram escolhidas para demonstrar o que Go faz melhor:
+- **Worker pool** — controle fino de concorrência com goroutines e channels
+- **Pipeline** — padrão produtor/consumidor encadeado, idiomático em Go
+- **SSE** — Go lida naturalmente com milhares de conexões longas e concorrentes
 
 ## 🧠 Quick Mental Model
 Signup/Login  → access_token (15min) + refresh_token (7 days)
@@ -227,6 +311,8 @@ UseCase       → business rules
 Repository    → database
 refresh_token → used in /api/refresh to renew access_token
 logout        → revokes refresh_token in the database
+Stripe        → payment intent created on checkout
+webhook validates signature → updates order status
 
 ## 📬 Contact
 
@@ -245,11 +331,12 @@ Backend em Go para gerenciar produtos da banda Volurya (camisetas, bonés, meias
 
 Projeto pessoal / laboratório de aprendizado para praticar conceitos reais de backend.
 
-![Badge](https://img.shields.io/badge/Go-1.25-blue?logo=go&logoColor=white)
+![Badge](https://img.shields.io/badge/Go-1.23-blue?logo=go&logoColor=white)
 ![Badge](https://img.shields.io/badge/Gin-1.10-green)
 ![Badge](https://img.shields.io/badge/PostgreSQL-16-blue)
 ![Badge](https://img.shields.io/badge/Docker-Pronto-blue)
 ![Badge](https://img.shields.io/badge/JWT-Autenticação-blue)
+![Badge](https://img.shields.io/badge/Stripe-Pagamentos-blue?logo=stripe&logoColor=white)
 ![Badge](https://img.shields.io/badge/Deploy-Render-success?logo=render&logoColor=white)
 
 ## 🎯 Objetivos do Projeto
@@ -260,15 +347,14 @@ Projeto pessoal / laboratório de aprendizado para praticar conceitos reais de b
 - Fazer **testes reais** (unitários + integração)
 - Padronizar ambiente com **Docker**
 - Criar um projeto fácil de explicar e apresentar
-- **Hardening de segurança** (validação de email, rate limiting, CSRF)
+- **Hardening de segurança** (validação de email, rate limiting, validação de webhook)
 - **Documentação completa** (Swagger/OpenAPI)
-- **Features production-ready** (healthchecks, rastreamento de requisições, monitoring)
+- **Features production-ready** (healthchecks, rastreamento, monitoring)
 
 ## 🌐 API Online (Render)
 
 - URL base: https://volurya.onrender.com
 - Health check: https://volurya.onrender.com/ping → `{"message": "pong"}`
-- **Swagger UI**: https://volurya.onrender.com/swagger/index.html
 
 **Aviso**: Render free tier tem cold start — primeira requisição após ~15 min de inatividade pode demorar 10–30 segundos.
 
@@ -290,26 +376,36 @@ git clone https://github.com/Iagobarros211256/volurya.git
 cd volurya
 ```
 
-Crie um arquivo `.env` na raiz:
+Crie um arquivo `.env` na raiz (veja `.env.example`):
 
 ```env
-JWT_SECRET=sua_chave_secreta_aqui
+APP_ENV=development
+
+JWT_SECRET=sua_chave_secreta_minimo_32_chars
+ACCESS_TOKEN_DURATION_MINUTES=15
+REFRESH_TOKEN_DURATION_DAYS=7
+
 POSTGRES_HOST=volurya_postgres
 POSTGRES_PORT=5432
 POSTGRES_USER=volurya
-POSTGRES_PASSWORD=volurya
+POSTGRES_PASSWORD=sua_senha_postgres
 POSTGRES_DB=volurya_db
-PAGSEGURO_TOKEN=seu_token_aqui
-PAGSEGURO_EMAIL=seu_email_aqui
-PAGSEGURO_SANDBOX=true
-PAGSEGURO_WEBHOOK_URL=http://localhost:8080/api/webhook
-ACCESS_TOKEN_DURATION_MINUTES=15
-REFRESH_TOKEN_DURATION_DAYS=7
+
+STRIPE_SECRET_KEY=sk_test_sua_chave
+STRIPE_WEBHOOK_SECRET=whsec_seu_secret
+
+R2_ACCESS_KEY_ID=sua_chave_r2
+R2_SECRET_ACCESS_KEY=seu_secret_r2
+R2_ACCOUNT_ID=seu_account_id
+R2_BUCKET_NAME=nome_do_bucket
+R2_PUBLIC_URL=https://seu-bucket.r2.dev
+
 BOOTSTRAP_ADMIN_EMAIL=admin@volurya.com
 BOOTSTRAP_ADMIN_PASSWORD=troque-esta-senha
-```
 
-`BOOTSTRAP_ADMIN_EMAIL` e `BOOTSTRAP_ADMIN_PASSWORD` são opcionais. Quando definidos, a API cria ou atualiza esse usuário com `role=admin` no startup; use isso no Render para ter um usuário de teste/admin no banco de produção sem gravar credenciais no código.
+GRAFANA_ADMIN_USER=admin
+GRAFANA_ADMIN_PASSWORD=sua_senha_grafana
+```
 
 Suba os containers:
 
@@ -331,14 +427,13 @@ docker compose down -v
 docker exec -it volurya_postgres psql -U volurya -d volurya_db
 ```
 
-As tabelas são criadas automaticamente pelas migrations ao iniciar a API. Nenhum comando SQL manual é necessário.
-
-Comandos rápidos:
+As tabelas são criadas automaticamente pelas migrations ao iniciar a API.
 
 ```sql
-\dt                    -- lista tabelas
-SELECT * FROM users;   -- ver usuários
+\dt                        -- lista tabelas
+SELECT * FROM users;       -- ver usuários
 SELECT * FROM products;
+SELECT * FROM order_items; -- itens de cada pedido
 ```
 
 ## 🔐 Fluxo de Autenticação (JWT)
@@ -363,7 +458,7 @@ curl -X POST https://volurya.onrender.com/api/login \
   -d '{"email": "fan@volurya.com", "password": "senhaSegura123"}'
 ```
 
-**Refresh (quando o access_token expirar):**
+**Refresh:**
 
 ```bash
 curl -X POST https://volurya.onrender.com/api/refresh \
@@ -371,7 +466,7 @@ curl -X POST https://volurya.onrender.com/api/refresh \
   -d '{"refresh_token": "SEU_REFRESH_TOKEN"}'
 ```
 
-**Logout (revoga o refresh_token):**
+**Logout:**
 
 ```bash
 curl -X POST https://volurya.onrender.com/api/logout \
@@ -392,91 +487,42 @@ curl -X GET https://volurya.onrender.com/api/products \
 |--------|----------|-----------|-------|
 | POST | /api/signup | Cria usuário (role: user) | Não |
 | POST | /api/login | Gera tokens JWT | Não |
-| POST | /api/refresh | Gera novo par de tokens via refresh_token | Não |
+| POST | /api/refresh | Renova tokens via refresh_token | Não |
 | POST | /api/logout | Revoga o refresh_token | Não |
-| GET | /api/health | Healthcheck com status do BD (200/503) | Não |
+| GET | /api/health | Healthcheck com status do BD | Não |
+| POST | /api/webhook | Webhook Stripe (assinatura validada) | Não |
 | GET | /api/products | Lista produtos (paginação por cursor) | Sim |
-| POST | /api/products | Cria produto (com ownership) | Sim |
+| POST | /api/products | Cria produto (admin only) | Sim |
 | GET | /api/products/:productId | Busca produto por ID | Sim |
-| PUT | /api/products/:productId | Atualiza produto | Sim |
-| DELETE | /api/products/:productId | Deleta produto (verifica ownership) | Sim |
-| GET | /ping | Healthcheck | Não |
+| PUT | /api/products/:productId | Atualiza produto (admin only) | Sim |
+| DELETE | /api/products/:productId | Deleta produto (admin only) | Sim |
+| POST | /api/checkout | Cria payment intent no Stripe | Sim |
 | GET | /api/cart | Ver carrinho atual | Sim |
 | POST | /api/cart/items | Adicionar produto ao carrinho | Sim |
-| PUT | /api/cart/items/:itemId | Atualizar quantidade do item | Sim |
-| DELETE | /api/cart/items/:itemId | Remover item do carrinho | Sim |
-| POST | /api/cart/checkout | Finalizar compra e gerar links de pagamento | Sim |
-| GET | /swagger/index.html | Swagger UI (OpenAPI 3.0) | Não |
-| GET | /api/events | Stream SSE de notificações em tempo real | Sim |
+| PUT | /api/cart/items/:itemId | Atualizar quantidade | Sim |
+| DELETE | /api/cart/items/:itemId | Remover item | Sim |
+| POST | /api/cart/checkout | Finalizar compra | Sim |
+| GET | /api/events | Stream SSE de notificações | Sim |
+| GET | /ping | Healthcheck simples | Não |
 
 ## 🧪 Testes
 
-Banco de teste isolado:
-
 ```bash
 docker compose -f docker-compose.test.yml up -d
-```
-
-Rodar todos os testes:
-
-```bash
 go test ./... -v
+go test ./... -coverprofile=cover.out && go tool cover -html=cover.out
 ```
-
-Ver cobertura:
-
-```bash
-go test ./... -coverprofile=cover.out
-go tool cover -html=cover.out
-```
-
-Inclui:
-- Testes unitários (usecase com repo mockado)
-- Testes de integração (HTTP + banco real)
-- Helpers de setup/cleanup do banco
-- **20+ novos testes** para segurança, validação e healthchecks
 
 ## 🛠️ Decisões de Arquitetura
 
 - Clean Architecture simplificada
+- Stripe para pagamentos com validação de webhook
 - Refresh token com rotação e revogação no banco
-- Duração dos tokens configurável via variáveis de ambiente
+- Duração dos tokens configurável via env
 - Migrations automáticas com golang-migrate
-- Banco real nos testes de integração
-- Ownership em produtos (user_id)
+- Cloudflare R2 para storage de imagens
 - Docker como ambiente padrão
-- Carrinho persistido no banco (persiste entre sessões)
-- Upsert no AddItem (adicionar produto já no carrinho incrementa quantidade)
-- Ownership enforcement nos itens do carrinho
-- Carrinho limpo automaticamente após checkout
-- **Rate limiting middleware** (per-endpoint, in-memory)
-- **CORS middleware** (environment-aware)
-- **Request ID middleware** (UUID tracking + structured logging)
-- **CSRF protection** (SHA256-based tokens)
-- **Health checks** (DB connectivity monitoring)
-
-## ❄️ Status Atual
-
-Backend em evolução ativa. **P0+P1+P2 completamente implementados e production-ready!**
-
-### ✅ **Fase P0 - Segurança Crítica** 
-- [x] Email validation (RFC 5321 compliant)
-- [x] Binding constraints em auth endpoints
-- [x] Rate limiting (5 req/min em login/signup, 10 req/min em refresh)
-- [x] Código morto removido
-
-### ✅ **Fase P1 - Documentação & Qualidade**
-- [x] CORS middleware (Dev/Prod support)
-- [x] Query parameter validation
-- [x] 20+ unit tests (mocks, integration tests)
-- [x] Swagger/OpenAPI 3.0 documentation
-
-### ✅ **Fase P2 - Production Enhancement**
-- [x] HTTPS redirect (HTTP → HTTPS em produção)
-- [x] Healthcheck endpoint com status do banco
-- [x] Request ID logging (UUID-based tracing)
-- [x] Per-endpoint rate limiting refinement
-- [x] CSRF protection middleware
+- Prometheus + Grafana para monitoring
 
 ## 🧠 Modelo Mental Rápido
 Signup/Login  → access_token (15min) + refresh_token (7 dias)
@@ -486,6 +532,8 @@ UseCase       → regras de negócio
 Repository    → banco
 refresh_token → usado em /api/refresh para renovar o access_token
 logout        → revoga o refresh_token no banco
+Stripe        → payment intent criado no checkout
+webhook valida assinatura → atualiza status da ordem
 
 ## 📬 Contato
 
@@ -493,85 +541,6 @@ Iago Barros
 @Iagobarros2112  
 Fortaleza, Brasil – 2026  
 Feito com ❤️, raiva e muito café para aprender e mostrar como penso arquitetura backend.
-
-
-
-## 🗺️ Roadmap
-
-### ✅ Concluído
-- [x] Clean Architecture (controller → usecase → repository)
-- [x] JWT authentication com bcrypt
-- [x] CRUD de produtos com ownership
-- [x] Paginação por cursor
-- [x] Refresh token com rotação e revogação no banco
-- [x] Logout com invalidação do token
-- [x] Duração dos tokens configurável via env
-- [x] Migrations automáticas com golang-migrate
-- [x] Testes unitários e de integração
-- [x] Docker + deploy no Render
-- [x] Carrinho de compras com persistência no banco
-- [x] Upload de imagem para produtos (Cloudflare R2)
-- [x] Logs estruturados com slog (JSON em produção, texto em desenvolvimento)
-- [x] Request ID por requisição
-- [x] user_id nos logs de rotas autenticadas
-
-### 🔜 Features
-- [x] Verificação de estoque no CreateOrder
-- [ ] Webhook do PagSeguro (atualizar status do pedido para `paid`)
-- [x] Guard de role `admin` nas rotas de criação/deleção de produtos
-- [ ] Cache de produtos com Redis
-- [ ] Compressão gzip nas respostas
-
-### 🔒 Segurança
-- [x] Rate limiting nas rotas públicas (signup, login, refresh)
-- [x] CORS configurado corretamente
-- [x] Email validation (RFC 5321)
-- [x] Password validation (8-128 chars)
-- [x] CSRF protection
-- [x] HTTPS redirect em produção
-- [ ] Helmet headers (X-Content-Type-Options, X-Frame-Options, etc.)
-- [x] Validação de input robusta com structs + binding tags
-- [x] Sanitização de input
-- [x] Expiração automática de refresh tokens no banco
-
-### 📊 Observabilidade e Performance
-- [x] Logs estruturados com `slog`
-- [x] Request ID por requisição
-- [x] Métricas com Prometheus (`/metrics`)
-- [x] Health check detalhado (banco, status)
-- [ ] Índices no banco (`token` em refresh_tokens, `user_id` em products)
-- [ ] Compressão gzip nas respostas
-- [ ] Connection pool configurável via env
-- [ ] Cache de produtos com Redis
-
-
-### 🔧 Concorrência e Performance (Go avançado)
-- [x] Worker pool para processamento de imagens (goroutines + channels)
-- [x] Pipeline de processamento de imagem assíncrono (validar → redimensionar → comprimir → salvar no R2)
-- [x] SSE (Server-Sent Events) para notificações em tempo real ao frontend
-
-### 💡 Por que essas features?
-Essas três implementações foram escolhidas para demonstrar o que Go faz melhor:
-- **Worker pool** — controle fino de concorrência com goroutines e channels
-- **Pipeline** — padrão produtor/consumidor encadeado, idiomático em Go
-- **SSE** — Go lida naturalmente com milhares de conexões longas e concorrentes
-Juntas formam um sistema de processamento de imagem assíncrono profissional.
-
-
-### 🎨 Frontend
-- [x] Página do carrinho visual com listagem de itens e total
-- [x] Página "About" com bio completa e galeria de fotos com lightbox
-- [x] Botão de logout no navbar quando usuário estiver logado
-- [x] Badge de quantidade no ícone do carrinho no navbar
-- [x] Redirecionamento inteligente — login redireciona de volta para a página anterior
-- [ ] Usar `image_url` real do produto na store (hoje está hardcoded)
-- [ ] Skeleton loading nos cards de produto
-- [ ] Filtro e busca de produtos na store
-- [ ] Página de confirmação de pedido após checkout
-- [ ] Página 404 customizada com identidade visual da banda
-- [x] icone para ver a senha que esta sendo digitada na pagina de cadastro e login
-
-
 
 ## 📚 Documentação
 
