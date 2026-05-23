@@ -3,19 +3,21 @@ package usecase
 import (
 	"api/models"
 	"api/repository"
+	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"time"
 )
 
-// PaymentUsecase handles payment operations with Stripe
+var ErrInsufficientStock = errors.New("insufficient stock")
+
 type PaymentUsecase struct {
 	orderRepo   *repository.OrderRepository
 	paymentRepo *repository.PaymentRepository
 	productRepo *repository.ProductRepository
 }
 
-// NewPaymentUsecase creates a new payment usecase
 func NewPaymentUsecase(
 	orderRepo *repository.OrderRepository,
 	paymentRepo *repository.PaymentRepository,
@@ -28,7 +30,6 @@ func NewPaymentUsecase(
 	}
 }
 
-// CreateOrderForCheckout creates an order and prepares it for payment
 func (pu *PaymentUsecase) CreateOrderForCheckout(
 	userID int,
 	items []models.CheckoutItemInput,
@@ -37,10 +38,10 @@ func (pu *PaymentUsecase) CreateOrderForCheckout(
 		return nil, fmt.Errorf("cart is empty")
 	}
 
-	// Calculate total and validate stock
 	var totalPrice float64
 	var orderItems []models.OrderItem
 
+	// Validar estoque de todos os itens antes de criar qualquer coisa
 	for _, item := range items {
 		product, err := pu.productRepo.GetProductById(item.ProductID)
 		if err != nil {
@@ -48,8 +49,8 @@ func (pu *PaymentUsecase) CreateOrderForCheckout(
 		}
 
 		if product.Stock < item.Quantity {
-			return nil, fmt.Errorf("product %d has insufficient stock: requested %d, available %d",
-				item.ProductID, item.Quantity, product.Stock)
+			return nil, fmt.Errorf("%w: product %d requested %d available %d",
+				ErrInsufficientStock, item.ProductID, item.Quantity, product.Stock)
 		}
 
 		unitPrice := product.Price
@@ -62,7 +63,10 @@ func (pu *PaymentUsecase) CreateOrderForCheckout(
 		})
 	}
 
-	// Create order in database with pending status
+	// Arredondar total para evitar imprecisão de float
+	totalPrice = math.Round(totalPrice*100) / 100
+
+	// Criar ordem
 	order := models.Order{
 		UserID: userID,
 		Total:  totalPrice,
@@ -74,14 +78,38 @@ func (pu *PaymentUsecase) CreateOrderForCheckout(
 		return nil, fmt.Errorf("failed to create order: %w", err)
 	}
 
-	slog.Info("Order created for checkout",
+	// Persistir order_items no banco
+	for i := range orderItems {
+		orderItems[i].OrderID = orderID
+	}
+	if err := pu.orderRepo.CreateOrderItems(orderID, orderItems); err != nil {
+		// Compensar — cancelar ordem órfã
+		_ = pu.orderRepo.UpdateOrderStatus(orderID, string(models.OrderStatusCancelled))
+		return nil, fmt.Errorf("failed to create order items: %w", err)
+	}
+
+	// Decrementar estoque atomicamente
+	for _, item := range orderItems {
+		if err := pu.productRepo.DecrementStock(item.ProductID, item.Quantity); err != nil {
+			// Compensar — cancelar ordem e restaurar itens já decrementados seria ideal
+			// Por ora cancela a ordem e loga — melhoria futura: transação completa
+			_ = pu.orderRepo.UpdateOrderStatus(orderID, string(models.OrderStatusCancelled))
+			slog.Error("failed to decrement stock",
+				"error", err,
+				"product_id", item.ProductID,
+				"order_id", orderID,
+			)
+			return nil, fmt.Errorf("failed to update stock: %w", err)
+		}
+	}
+
+	slog.Info("order created for checkout",
 		"order_id", orderID,
 		"user_id", userID,
 		"total", totalPrice,
 		"item_count", len(items),
 	)
 
-	// Return order detail
 	return &models.OrderDetail{
 		ID:         orderID,
 		UserID:     userID,
@@ -93,56 +121,62 @@ func (pu *PaymentUsecase) CreateOrderForCheckout(
 	}, nil
 }
 
-// UpdateOrderPaymentIntent updates order with payment intent info
+// CancelOrder cancela uma ordem órfã
+func (pu *PaymentUsecase) CancelOrder(orderID int) error {
+	return pu.orderRepo.UpdateOrderStatus(orderID, string(models.OrderStatusCancelled))
+}
+
 func (pu *PaymentUsecase) UpdateOrderPaymentIntent(
 	orderID int,
 	paymentIntentID string,
-	amount int, // in cents
+	amount int,
 ) error {
 	if orderID <= 0 || paymentIntentID == "" {
 		return fmt.Errorf("invalid order or payment intent")
 	}
 
-	// Update order with payment intent ID and status
 	err := pu.orderRepo.UpdateOrderPaymentIntent(orderID, paymentIntentID, string(models.OrderStatusPending))
 	if err != nil {
 		return fmt.Errorf("failed to update order: %w", err)
 	}
 
-	slog.Info("Order updated with payment intent",
+	slog.Info("order updated with payment intent",
 		"order_id", orderID,
 		"payment_intent", paymentIntentID,
-		"amount", amount,
+		"amount_cents", amount,
 	)
 
 	return nil
 }
 
-// HandlePaymentSuccess updates order status when payment succeeds
 func (pu *PaymentUsecase) HandlePaymentSuccess(paymentIntentID string) error {
 	if paymentIntentID == "" {
 		return fmt.Errorf("payment intent ID is required")
 	}
 
-	// Get payment record to find order
 	payment, err := pu.paymentRepo.GetPaymentByIntentID(paymentIntentID)
 	if err != nil {
 		return fmt.Errorf("payment record not found: %w", err)
 	}
 
-	// Update payment status
-	err = pu.paymentRepo.UpdatePaymentStatus(payment.ID, string(models.PaymentStatusSucceeded))
-	if err != nil {
+	// Idempotência — evita processar duas vezes
+	if payment.Status == models.PaymentStatusSucceeded {
+		slog.Info("payment already processed, skipping",
+			"payment_intent", paymentIntentID,
+			"order_id", payment.OrderID,
+		)
+		return nil
+	}
+
+	if err := pu.paymentRepo.UpdatePaymentStatus(payment.ID, string(models.PaymentStatusSucceeded)); err != nil {
 		return fmt.Errorf("failed to update payment status: %w", err)
 	}
 
-	// Update order status to paid
-	err = pu.orderRepo.UpdateOrderStatus(payment.OrderID, string(models.OrderStatusPaid))
-	if err != nil {
+	if err := pu.orderRepo.UpdateOrderStatus(payment.OrderID, string(models.OrderStatusPaid)); err != nil {
 		return fmt.Errorf("failed to update order status: %w", err)
 	}
 
-	slog.Info("Payment succeeded",
+	slog.Info("payment succeeded",
 		"order_id", payment.OrderID,
 		"payment_intent", paymentIntentID,
 	)
@@ -150,31 +184,34 @@ func (pu *PaymentUsecase) HandlePaymentSuccess(paymentIntentID string) error {
 	return nil
 }
 
-// HandlePaymentFailed updates order status when payment fails
 func (pu *PaymentUsecase) HandlePaymentFailed(paymentIntentID, errorMessage string) error {
 	if paymentIntentID == "" {
 		return fmt.Errorf("payment intent ID is required")
 	}
 
-	// Get payment record to find order
 	payment, err := pu.paymentRepo.GetPaymentByIntentID(paymentIntentID)
 	if err != nil {
 		return fmt.Errorf("payment record not found: %w", err)
 	}
 
-	// Update payment status with error message
-	err = pu.paymentRepo.UpdatePaymentStatusWithError(payment.ID, string(models.PaymentStatusFailed), errorMessage)
-	if err != nil {
+	// Idempotência
+	if payment.Status == models.PaymentStatusFailed {
+		return nil
+	}
+
+	if err := pu.paymentRepo.UpdatePaymentStatusWithError(
+		payment.ID,
+		string(models.PaymentStatusFailed),
+		errorMessage,
+	); err != nil {
 		return fmt.Errorf("failed to update payment: %w", err)
 	}
 
-	// Update order status to failed
-	err = pu.orderRepo.UpdateOrderStatus(payment.OrderID, string(models.OrderStatusFailed))
-	if err != nil {
+	if err := pu.orderRepo.UpdateOrderStatus(payment.OrderID, string(models.OrderStatusFailed)); err != nil {
 		return fmt.Errorf("failed to update order status: %w", err)
 	}
 
-	slog.Info("Payment failed",
+	slog.Info("payment failed",
 		"order_id", payment.OrderID,
 		"payment_intent", paymentIntentID,
 		"error", errorMessage,
@@ -183,7 +220,6 @@ func (pu *PaymentUsecase) HandlePaymentFailed(paymentIntentID, errorMessage stri
 	return nil
 }
 
-// CreatePaymentRecord creates a new payment record for tracking
 func (pu *PaymentUsecase) CreatePaymentRecord(
 	orderID int,
 	paymentIntentID string,
@@ -211,89 +247,11 @@ func (pu *PaymentUsecase) CreatePaymentRecord(
 
 	payment.ID = id
 
-	slog.Info("Payment record created",
+	slog.Info("payment record created",
 		"id", id,
 		"order_id", orderID,
-		"amount", amount,
+		"amount_cents", amount,
 	)
 
 	return &payment, nil
 }
-
-// GetOrderWithPayment retrieves an order with its payment information
-func (pu *PaymentUsecase) GetOrderWithPayment(orderID int) (*models.OrderDetail, error) {
-	if orderID <= 0 {
-		return nil, fmt.Errorf("invalid order ID")
-	}
-
-	// This would fetch order from repository
-	// For now, it's a placeholder for future implementation
-	return nil, fmt.Errorf("not implemented")
-}
-
-/*
-
-
- Dependências concretas
-goorderRepo   *repository.OrderRepository
-paymentRepo *repository.PaymentRepository
-productRepo *repository.ProductRepository
-Padrão recorrente — sem interfaces, sem testes unitários.
-
-🔴 CreateOrderForCheckout não decrementa estoque
-goif product.Stock < item.Quantity {
-    return nil, fmt.Errorf("insufficient stock...")
-}
-// valida estoque mas nunca decrementa
-Mesmo problema do order_usecase.go — race condition em compras simultâneas. O estoque deveria ser decrementado atomicamente na criação da ordem:
-goUPDATE products SET stock = stock - $1
-WHERE id = $2 AND stock >= $1
-RETURNING stock
-
-🔴 CreateOrderForCheckout ignora order_items
-goorder := models.Order{
-    UserID: userID,
-    Total:  totalPrice,
-    Status: string(models.OrderStatusPending),
-}
-orderID, err := pu.orderRepo.CreateOrder(order)
-// orderItems calculados mas nunca persistidos no banco
-Os orderItems são calculados e colocados no OrderDetail retornado, mas nunca inseridos no banco. O banco não tem registro de quais produtos fazem parte da ordem — informação financeira perdida.
-
-🔴 GetOrderWithPayment é placeholder em produção
-gofunc (pu *PaymentUsecase) GetOrderWithPayment(orderID int) (*models.OrderDetail, error) {
-    return nil, fmt.Errorf("not implemented")
-}
-Função pública não implementada exposta na API. Se chamada, retorna erro genérico sem indicação de que é um placeholder. Remova ou adicione // TODO:
-go// TODO: implementar busca de ordem com pagamento
-
-🔴 HandlePaymentSuccess não é idempotente
-goerr = pu.paymentRepo.UpdatePaymentStatus(payment.ID, string(models.PaymentStatusSucceeded))
-err = pu.orderRepo.UpdateOrderStatus(payment.OrderID, string(models.OrderStatusPaid))
-Webhooks do Stripe podem ser entregues mais de uma vez. Se payment_intent.succeeded chegar duas vezes, a ordem é processada duas vezes — potencialmente decrementando estoque ou disparando emails duplicados no futuro. Adicione verificação de status atual:
-goif payment.Status == models.PaymentStatusSucceeded {
-    return nil // já processado, idempotente
-}
-
-🟡 CreateOrderForCheckout retorna OrderDetail com timestamps do Go
-goreturn &models.OrderDetail{
-    CreatedAt: time.Now(),
-    UpdatedAt: time.Now(),
-}
-Os timestamps deveriam vir do banco após o INSERT, não serem gerados no Go — podem divergir do valor real armazenado.
-
-🟡 UpdateOrderPaymentIntent passa status pending hardcoded
-gopu.orderRepo.UpdateOrderPaymentIntent(orderID, paymentIntentID, string(models.OrderStatusPending))
-Ao associar um payment intent, o status deveria mudar para algo como payment_pending ou awaiting_payment, não ficar em pending. O status pending era o estado antes do checkout.
-
-🟡 string(models.OrderStatusPaid) — cast desnecessário
-gopu.orderRepo.UpdateOrderStatus(payment.OrderID, string(models.OrderStatusPaid))
-Como apontado no order_repository.go, UpdateOrderStatus deveria aceitar models.OrderStatus diretamente, eliminando esses casts.
-
-🟡 Sem transação entre UpdatePaymentStatus e UpdateOrderStatus
-gopu.paymentRepo.UpdatePaymentStatus(...)   // sucesso
-pu.orderRepo.UpdateOrderStatus(...)       // falha — estados inconsistentes
-Se o segundo update falhar, o pagamento está marcado como sucedido mas a ordem ainda está pendente. Use transação.
-
-
-*/

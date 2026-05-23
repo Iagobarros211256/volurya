@@ -13,11 +13,11 @@ import (
 	"api/storage"
 	"api/usecase"
 	"context"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -46,7 +46,6 @@ import (
 // @schemes https http
 
 func main() {
-
 	logger.Init()
 
 	gin.SetMode(gin.ReleaseMode)
@@ -58,7 +57,7 @@ func main() {
 	router.Use(middleware.CSRFProtection())
 	router.Use(middleware.CSRFTokenProvider())
 
-	// Iniciar worker pool (4 workers)
+	// Worker pool para processamento de imagens
 	imageProcessor := jobs.NewImageProcessor(4)
 	defer imageProcessor.Shutdown()
 	notificationHub := notifications.NewHub()
@@ -66,47 +65,36 @@ func main() {
 	router.LoadHTMLGlob("views/templates/*")
 	router.Static("/static", "./views/static")
 
-	router.GET("/", func(c *gin.Context) {
-		c.HTML(200, "index.html", gin.H{})
-	})
-
+	// Rotas de páginas
+	router.GET("/", func(c *gin.Context) { c.HTML(200, "index.html", gin.H{}) })
 	router.GET("/store", func(c *gin.Context) {
-		c.HTML(200, "store.html", gin.H{
-			"title": "VOLURYA SHOP - Produtos Oficiais",
-		})
+		c.HTML(200, "store.html", gin.H{"title": "VOLURYA SHOP - Produtos Oficiais"})
 	})
+	router.GET("/about", func(c *gin.Context) { c.HTML(200, "about.html", gin.H{}) })
+	router.GET("/cart", func(c *gin.Context) { c.HTML(200, "cart.html", gin.H{}) })
+	router.GET("/login", func(c *gin.Context) { c.HTML(200, "login.html", gin.H{}) })
+	router.GET("/signup", func(c *gin.Context) { c.HTML(200, "signup.html", gin.H{}) })
 
-	router.GET("/about", func(c *gin.Context) {
-		c.HTML(200, "about.html", gin.H{})
-	})
-
-	router.GET("/cart", func(c *gin.Context) {
-		c.HTML(200, "cart.html", gin.H{})
-	})
-
-	router.GET("/login", func(c *gin.Context) {
-		c.HTML(200, "login.html", gin.H{})
-	})
-
-	router.GET("/signup", func(c *gin.Context) {
-		c.HTML(200, "signup.html", gin.H{})
-	})
-
-	// Ping de saúde
-	///ping e /swagger sem proteção
-	//Swagger em produção expõe toda a estrutura da API. O padrão é desabilitar em produção
 	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "pong"})
 	})
 
-	///metrics exposto sem autenticação  BUG!!!!!
-	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	// Swagger apenas fora de produção
+	if os.Getenv("APP_ENV") != "production" {
+		router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
+	}
 
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
-
-	router.HEAD("/", func(c *gin.Context) {
-		c.Status(200)
+	// Métricas protegidas por IP local apenas
+	router.GET("/metrics", func(c *gin.Context) {
+		ip := c.ClientIP()
+		if ip != "127.0.0.1" && ip != "::1" && !strings.HasPrefix(ip, "172.") {
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+		promhttp.Handler().ServeHTTP(c.Writer, c.Request)
 	})
+
+	router.HEAD("/", func(c *gin.Context) { c.Status(200) })
 
 	// DB
 	dbConnection, err := db.ConnectDB()
@@ -122,10 +110,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Initialize Stripe
+	// Stripe
 	if err := config.InitStripe(); err != nil {
 		slog.Warn("Stripe initialization warning", "error", err)
-		// Don't exit - Stripe is optional for development
 	}
 
 	// Migrations
@@ -134,10 +121,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	//db.BootstrapAdminUser no startup é arriscado
-	//Criar usuário admin automaticamente no boot pode ser um vetor de ataque se
-	//a lógica não for idempotente e bem protegida. Verifique se verifica existência antes de criar,
-	//  e se a senha vem de variável de ambiente.
 	if err := db.BootstrapAdminUser(dbConnection); err != nil {
 		slog.Error("failed to bootstrap admin user", "error", err)
 		os.Exit(1)
@@ -163,7 +146,7 @@ func main() {
 		productUsecase,
 		productRepository,
 		r2Storage,
-		imageProcessor, // NOVO - passe o processor aqui. esqueci o que isso significa
+		imageProcessor,
 	)
 	authController := controller.NewAuthController(authUseCase)
 	orderController := controller.NewOrderController(orderUsecase, notificationHub)
@@ -172,73 +155,79 @@ func main() {
 	healthController := controller.NewHealthController(dbConnection)
 	paymentController := controller.NewPaymentController(paymentUsecase)
 
+	// Rate limiters
+	authLimiter := middleware.NewRateLimiter(5, 1*time.Minute)
+	refreshLimiter := middleware.NewRateLimiter(10, 1*time.Minute)
+
 	// Rotas públicas
-	authLimiter := middleware.NewRateLimiter(5, 1*time.Minute)     // 5 req/min
-	refreshLimiter := middleware.NewRateLimiter(10, 1*time.Minute) // 10 req/min
-
-	// Webhook route (public, but needs signature validation)
-	//variáveis usadas antes de serem declaradas BUG!!!!
-	public.POST("/webhook", paymentController.Webhook)
-
-	//variáveis usadas antes de serem declaradas BUG!!!!
-	// Payment routes (protected)
-	protected.POST("/checkout", paymentController.Checkout)
+	public := router.Group("/api")
+	{
+		public.POST("/signup", authLimiter.Middleware(), authController.Signup)
+		public.POST("/login", authLimiter.Middleware(), authController.Login)
+		public.POST("/refresh", refreshLimiter.Middleware(), authController.RefreshToken)
+		public.POST("/logout", authController.Logout)
+		public.GET("/health", healthController.Health)
+		public.POST("/webhook", paymentController.Webhook)
+	}
 
 	// Rotas protegidas
-	////variáveis usadas antes de serem declaradas BUG!!!!
 	protected := router.Group("/api")
 	protected.Use(auth.Middleware())
-	{ //products protected routes
+	{
+		// Produtos
 		protected.GET("/products", productController.GetProducts)
 		protected.GET("/products/:productId", productController.GetProductById)
 
-		// Product routes requiring admin role
+		// Produtos — admin only
 		adminProduct := protected.Group("/products")
 		adminProduct.Use(auth.RequireAdminRole())
 		{
 			adminProduct.POST("", productController.CreateProduct)
 			adminProduct.PUT("/:productId", productController.UpdateProduct)
 			adminProduct.DELETE("/:productId", productController.Delete)
+			adminProduct.POST("/:productId/image", productController.UploadImage)
 		}
 
+		// Checkout — protegido
+		protected.POST("/checkout", paymentController.Checkout)
+
+		// Ordens
 		protected.POST("/orders", orderController.CreateOrder)
+
+		// SSE
 		protected.GET("/events", notificationController.Stream)
 
-		//cart protected routes
+		// Carrinho
 		protected.GET("/cart", cartController.GetCart)
 		protected.POST("/cart/items", cartController.AddItem)
 		protected.PUT("/cart/items/:itemId", cartController.UpdateItem)
 		protected.DELETE("/cart/items/:itemId", cartController.RemoveItem)
 		protected.POST("/cart/checkout", cartController.Checkout)
-
-		//images protected route (admin only)
-		adminProduct.POST("/:productId/image", productController.UploadImage)
 	}
 
 	// Porta
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
-		// Porta hardcoded como fallback está ok, mas poderia ser constante
 	}
 
-	// 👇 HTTP server custom
 	srv := &http.Server{
-		Addr:    ":" + port,
-		Handler: router,
+		Addr:         ":" + port,
+		Handler:      router,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 	srv.RegisterOnShutdown(notificationHub.Close)
 
-	// HTTPS Redirect em produção
-	env := os.Getenv("ENV")
-	if env == "production" {
+	// HTTPS redirect em produção
+	if os.Getenv("APP_ENV") == "production" {
 		go func() {
 			slog.Info("HTTP redirect server rodando na porta 80")
 			redirectServer := &http.Server{
 				Addr: ":80",
 				Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					target := "https://" + r.Host + r.RequestURI
-					http.Redirect(w, r, target, http.StatusMovedPermanently)
+					http.Redirect(w, r, "https://"+r.Host+r.RequestURI, http.StatusMovedPermanently)
 				}),
 			}
 			if err := redirectServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -247,30 +236,26 @@ func main() {
 		}()
 	}
 
-	// 👇 Rodar servidor em goroutine
 	go func() {
-		slog.Info("API Volurya rodando na porta", "port", port)
+		slog.Info("API Volurya rodando", "port", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			//porque esse log ainda existe?  Padronize tudo com slog para manter logs estruturados e consistentes.
-			log.Fatalf("erro ao iniciar servidor: %v", err)
+			slog.Error("erro ao iniciar servidor", "error", err)
+			os.Exit(1)
 		}
 	}()
 
-	// 👇 Capturar sinais do sistema (Docker, Render, etc)
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-
 	<-quit
+
 	slog.Info("Desligando servidor...")
 
-	// 👇 Timeout pra finalizar requisições
-	//Se houver requisições longas (upload de imagem, checkout),
-	// 5s pode não ser suficiente. Considere 15-30s, ou tornar configurável via env.
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	shutdownTimeout := 15 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		slog.Error("Erro no shutdown", "error", err)
+		slog.Error("erro no shutdown", "error", err)
 		os.Exit(1)
 	}
 
