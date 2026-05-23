@@ -3,14 +3,11 @@ package usecase
 import (
 	"api/models"
 	"api/repository"
-	"errors"
 	"fmt"
 	"log/slog"
 	"math"
 	"time"
 )
-
-var ErrInsufficientStock = errors.New("insufficient stock")
 
 type PaymentUsecase struct {
 	orderRepo   *repository.OrderRepository

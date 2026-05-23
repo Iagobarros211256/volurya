@@ -3,88 +3,83 @@ package repository
 import (
 	"api/models"
 	"database/sql"
+	"fmt"
 )
 
 type OrderRepository struct {
-	connection *sql.DB
+	db *sql.DB
 }
 
-func NewOrderRepository(connection *sql.DB) *OrderRepository {
-	return &OrderRepository{connection: connection}
+func NewOrderRepository(db *sql.DB) *OrderRepository {
+	return &OrderRepository{db: db}
 }
 
-func (or *OrderRepository) CreateOrder(order models.Order) (int, error) {
+func (r *OrderRepository) CreateOrder(order models.Order) (int, error) {
 	var id int
-	err := or.connection.QueryRow(
-		"INSERT INTO orders (user_id, product_id, quantity, total, status) VALUES ($1, $2, $3, $4, $5) RETURNING id",
-		order.UserID, order.ProductID, order.Quantity, order.Total, order.Status,
+	err := r.db.QueryRow(
+		`INSERT INTO orders (user_id, total, status)
+		 VALUES ($1, $2, $3)
+		 RETURNING id`,
+		order.UserID, order.Total, order.Status,
 	).Scan(&id)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to create order: %w", err)
 	}
 	return id, nil
 }
 
-func (or *OrderRepository) UpdateOrderChargeID(id int, chargeID string) error {
-	_, err := or.connection.Exec("UPDATE orders SET charge_id = $1 WHERE id = $2", chargeID, id)
-	return err
+func (r *OrderRepository) CreateOrderItems(orderID int, items []models.OrderItem) error {
+	for _, item := range items {
+		_, err := r.db.Exec(
+			`INSERT INTO order_items (order_id, product_id, quantity, unit_price)
+			 VALUES ($1, $2, $3, $4)`,
+			orderID, item.ProductID, item.Quantity, item.UnitPrice,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create order item for product %d: %w", item.ProductID, err)
+		}
+	}
+	return nil
 }
 
-// UpdateOrderPaymentIntent updates order with payment intent ID and status
-func (or *OrderRepository) UpdateOrderPaymentIntent(id int, paymentIntentID, status string) error {
-	_, err := or.connection.Exec(
-		"UPDATE orders SET payment_intent_id = $1, payment_status = $2, updated_at = NOW() WHERE id = $3",
+func (r *OrderRepository) UpdateOrderPaymentIntent(id int, paymentIntentID, status string) error {
+	_, err := r.db.Exec(
+		`UPDATE orders
+		 SET payment_intent_id = $1, payment_status = $2, updated_at = NOW()
+		 WHERE id = $3`,
 		paymentIntentID, status, id,
 	)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to update order payment intent: %w", err)
+	}
+	return nil
 }
 
-// UpdateOrderStatus updates the payment status of an order
-func (or *OrderRepository) UpdateOrderStatus(id int, status string) error {
-	_, err := or.connection.Exec(
-		"UPDATE orders SET payment_status = $1, updated_at = NOW() WHERE id = $2",
+func (r *OrderRepository) UpdateOrderStatus(id int, status string) error {
+	_, err := r.db.Exec(
+		`UPDATE orders
+		 SET status = $1, updated_at = NOW()
+		 WHERE id = $2`,
 		status, id,
 	)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to update order status: %w", err)
+	}
+	return nil
 }
 
-/*
-
- Erros sem wrap em 3 das 4 funções
-goreturn 0, err                    // CreateOrder
-return err                       // UpdateOrderChargeID
-return err                       // UpdateOrderStatus
-Apenas UpdateOrderPaymentIntent não tem wrap, mas nenhuma retorna erro com contexto. Padronize:
-goreturn 0, fmt.Errorf("failed to create order: %w", err)
-
-🔴 CreateOrder insere product_id diretamente
-Reflete o design problemático da migration e da model Order. Uma ordem com múltiplos produtos é impossível. Esse método deveria inserir em order_items dentro de uma transação.
-
-🔴 UpdateOrderChargeID é método legado
-gofunc (or *OrderRepository) UpdateOrderChargeID(id int, chargeID string) error {
-    _, err := or.connection.Exec("UPDATE orders SET charge_id = $1 WHERE id = $2", chargeID, id)
-charge_id é do PagSeguro — provedor anterior. O projeto migrou para Stripe com payment_intent_id. Esse método deveria ser removido ou o campo charge_id consolidado com payment_intent_id.
-
-🔴 UpdateOrderStatus atualiza payment_status mas o parâmetro chama status
-gofunc (or *OrderRepository) UpdateOrderStatus(id int, status string) error {
-    _, err := or.connection.Exec(
-        "UPDATE orders SET payment_status = $1...",
-Nome enganoso — UpdateOrderStatus sugere que atualiza o status da ordem (pending, paid, cancelled), mas na verdade atualiza payment_status. Renomeie para UpdateOrderPaymentStatus ou atualize ambos os campos:
-go"UPDATE orders SET status = $1, payment_status = $2, updated_at = NOW() WHERE id = $3"
-
-🟡 Nenhum método para buscar ordens
-Não há GetByID, GetByUserID ou GetByPaymentIntentID. O payment_usecase.go provavelmente precisa buscar ordens pelo payment_intent_id para processar webhooks — como está fazendo isso sem esse método?
-
-🟡 status string em vez de models.OrderStatus
-gofunc (or *OrderRepository) UpdateOrderStatus(id int, status string) error {
-models.OrderStatus já existe como tipo — use-o para segurança em tempo de compilação:
-gofunc (or *OrderRepository) UpdateOrderStatus(id int, status models.OrderStatus) error {
-
-🟡 Sem interface
-Padrão recorrente — sem interface para mock nos testes.
-
-🟡 connection vs db — inconsistência de nomenclatura
-CartRepository usa db, OrderRepository usa connection. Padronize para db em todo o projeto.
-
-
-*/
+func (r *OrderRepository) GetByPaymentIntentID(paymentIntentID string) (*models.Order, error) {
+	var order models.Order
+	err := r.db.QueryRow(
+		`SELECT id, user_id, total, status, payment_intent_id
+		 FROM orders WHERE payment_intent_id = $1`,
+		paymentIntentID,
+	).Scan(&order.ID, &order.UserID, &order.Total, &order.Status, &order.ChargeID)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("order not found")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get order: %w", err)
+	}
+	return &order, nil
+}
