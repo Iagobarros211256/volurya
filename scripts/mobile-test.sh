@@ -148,3 +148,70 @@ echo -e "${YELLOW}📝 Tokens para teste manual:${NC}"
 echo -e "  Access:  ${ACCESS_TOKEN}"
 echo -e "  Refresh: ${REFRESH_TOKEN}"
 echo ""
+
+#:<<Senha exposta no output do terminal
+#bashecho -e "🔑 Senha: ${YELLOW}${PASSWORD}${NC}"
+#E no final:
+#bashecho -e "  Refresh: ${REFRESH_TOKEN}"
+#Tokens e senha aparecem em claro no terminal — ficam no histórico do shell e em logs de CI. Mascare:
+#bashecho -e "🔑 Senha: ${YELLOW}****${NC}"
+#echo -e "  Access:  ${ACCESS_TOKEN:0:20}..."  # já faz isso em alguns lugares
+#echo -e "  Refresh: ${REFRESH_TOKEN:0:20}..."
+
+#🔴 set -e + exit 1 manual é inconsistente
+#bashset -e  # para no primeiro erro
+# ...
+#if [ -z "$ACCESS_TOKEN" ]; then
+#  exit 1  # manual
+#fi
+#Com set -e, qualquer comando que falhe já para o script. Mas grep retorna código 1 quando não encontra nada — com set -e isso mata o script silenciosamente antes do if. Troque por:
+#bashset -euo pipefail  # -u: variável não definida é erro, -o pipefail: erro em pipe
+#ACCESS_TOKEN=$(echo "$AUTH" | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))")
+#Ou use jq se disponível:
+#bashACCESS_TOKEN=$(echo "$AUTH" | jq -r '.access_token // empty')
+
+#🔴 Parse de JSON com grep e cut é frágil
+#bashACCESS_TOKEN=$(echo $AUTH | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
+#Quebra se o JSON vier formatado, com espaços, ou em ordem diferente. Use jq:
+#bashACCESS_TOKEN=$(echo "$AUTH" | jq -r '.access_token')
+#REFRESH_TOKEN=$(echo "$AUTH" | jq -r '.refresh_token')
+
+#🟡 echo $AUTH sem aspas — word splitting
+#bashecho $AUTH | grep ...
+#ACCESS_TOKEN=$(echo $AUTH | ...)
+#Sem aspas, espaços no JSON quebram o echo. Use sempre "$AUTH":
+#bashecho "$AUTH" | jq -r '.access_token'
+
+#🟡 Resumo final sempre imprime "TODOS OS TESTES CONCLUÍDOS COM SUCESSO"
+#bashecho -e "${GREEN}✅ TODOS OS TESTES CONCLUÍDOS COM SUCESSO!${NC}"
+#Essa mensagem aparece mesmo se vários testes falharam — set -e para o script em erros de comando, mas falhas de validação (HTTP_CODE != 400) apenas imprimem ❌ e continuam. O resumo deveria ser condicional baseado em um contador de falhas:
+#bashFAILURES=0
+
+#if [ "$HTTP_CODE" != "400" ]; then
+#    echo -e "  ${RED}❌ Falhou${NC}"
+#    FAILURES=$((FAILURES + 1))
+#fi
+
+# No final:
+#if [ $FAILURES -eq 0 ]; then
+#    echo -e "${GREEN}✅ TODOS OS TESTES PASSARAM${NC}"
+#else
+#    echo -e "${RED}❌ ${FAILURES} TESTE(S) FALHARAM${NC}"
+#    exit 1
+#fi
+
+#🟡 Testes de admin não incluídos
+#Não há testes para:
+
+#Criar produto (admin)
+#Upload de imagem (admin)
+#Deletar produto (admin)
+#Checkout/pagamento
+
+#O script testa apenas o fluxo de usuário comum.
+
+#🟢 Dependência de curl não verificada
+#bash#!/bin/bash
+# usa curl extensivamente mas não verifica se está instalado
+#bashcommand -v curl >/dev/null 2>&1 || { echo "curl não encontrado"; exit 1; }
+#command -v jq >/dev/null 2>&1 || { echo "jq não encontrado"; exit 1; }

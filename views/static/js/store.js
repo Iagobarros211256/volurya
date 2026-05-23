@@ -72,3 +72,59 @@ document.addEventListener('DOMContentLoaded', async () => {
     loading.style.display = 'none';
   }
 });
+
+
+/*
+
+XSS via innerHTML com dados da API
+javascriptcol.innerHTML = `
+    <h5 class="card-title text-danger">${product.name}</h5>
+    <p class="card-text flex-grow-1">${product.description || '...'}</p>
+product.name e product.description não sanitizados — mesmo problema do cart.js e store-admin.js. Use textContent para dados dinâmicos.
+
+🔴 err.message renderizado como HTML
+javascriptcontainer.innerHTML = `<p ...>Erro ao carregar produtos: ${err.message}</p>`
+Mesmo padrão inseguro dos outros arquivos JS.
+
+🔴 Imagem hardcoded — ignora product.image_url
+javascript<img src="/static/imagens/camiseta-feminina-preta.jpg" alt="${product.name}">
+O backend tem toda a infraestrutura de upload e processamento de imagens — R2 storage, worker pool, migration — mas a loja sempre mostra a mesma imagem estática. Todo esse trabalho de backend não está sendo usado:
+javascriptconst imgSrc = product.image_url || '/static/imagens/camiseta-feminina-preta.jpg'
+
+🔴 Compra sem adicionar ao carrinho
+javascriptconst res = await fetch('/api/orders', {
+    method: 'POST',
+    body: JSON.stringify({ product_id: parseInt(product.id), quantity: 1 })
+})
+window.location.href = data.payment_url
+O botão "Comprar" cria uma ordem diretamente — bypassa o carrinho completamente. O usuário não pode escolher quantidade, não vê o total, não pode revisar antes de pagar. O fluxo correto seria adicionar ao carrinho:
+javascriptawait fetch('/api/cart/items', {
+    method: 'POST',
+    body: JSON.stringify({ product_id: product.id, quantity: 1 })
+})
+window.location.href = '/cart'
+
+🟡 Sem paginação — carrega apenas os primeiros 12 produtos
+javascriptfetch('/api/products?limit=12')
+Carrega só 12 e não há botão de "carregar mais" ou paginação. O cursor-based pagination implementado no backend não é usado.
+
+🟡 parseInt(product.id) desnecessário
+javascriptproduct_id: parseInt(product.id)
+product.id já vem como número do JSON — parseInt é redundante e pode mascarar problemas se o tipo mudar.
+
+🟡 alt do img não sanitizado
+javascript<img src="..." alt="${product.name}">
+Dentro de innerHTML, alt com aspas no nome pode quebrar o HTML: um produto chamado "Test" onload="..." injeta atributos. Com textContent isso não ocorre — mais um motivo para evitar innerHTML.
+
+🟡 Sem tratamento de estoque esgotado
+javascript<button class="btn btn-outline-danger w-100 buy-btn" data-id="${product.id}">
+    Comprar
+</button>
+Produtos com stock === 0 mostram o botão ativo. Deveria desabilitar:
+javascriptconst outOfStock = product.stock === 0
+// button disabled + texto "Esgotado"
+
+
+
+
+*/

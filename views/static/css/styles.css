@@ -68,3 +68,39 @@ body {
   50%  { filter: drop-shadow(0 0 8px #ff0000); }
   100% { filter: drop-shadow(0 0 2px #ff0000); }
 }
+
+
+/*
+
+
+Pontos positivos:
+
+Animações bem encadeadas com delays coordenados
+focus-visible no toggle de senha — acessibilidade correta
+Media queries para responsividade do logo
+
+
+🟡 hero-logo com width: 1000px no desktop
+css.hero-logo {
+  width: 1000px;
+1000px é maior que muitas telas em uso. Em telas de 1024px de largura o logo ocupa quase tudo. Use valor relativo:
+csswidth: min(1000px, 80vw);
+
+🟡 Media queries com gap no breakpoint
+css@media (max-width: 576px)           /* até 576px */
+/*@media (min-width: 577px) and (max-width: 768px)  /* 577px-768px */
+/*Entre 576px e 577px há um pixel sem cobertura — o logo usa 1000px nesse intervalo. Use 576.98px ou simplesmente min-width: 576px para evitar o gap.
+
+🟢 Sem prefers-reduced-motion
+Usuários com sensibilidade a movimento deveriam ter as animações desabilitadas:
+css@media (prefers-reduced-motion: reduce) {
+  .hero-logo {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+🟢 font-family: "Russo One", serif
+serif como fallback genérico é muito diferente de "Russo One" — a aparência vai mudar drasticamente se a fonte não carregar. Use sans-serif como fallback mais próximo, ou defina uma fonte de sistema similar.
+
+/*

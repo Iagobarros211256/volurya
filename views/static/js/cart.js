@@ -150,3 +150,65 @@ async function checkout() {
     btn.textContent = 'FINALIZAR COMPRA';
   }
 }
+
+
+/*
+
+ XSS via innerHTML com dados da API
+javascriptrow.innerHTML = `
+  <h6 class="text-white mb-1">${product.name}</h6>
+  <p class="text-danger mb-0 fw-bold">R$ ${product.price.toFixed(2)}</p>
+`
+Se product.name contiver <script> ou "><img onerror="...">, executa código arbitrário. Use textContent para dados dinâmicos:
+javascriptconst name = document.createElement('h6')
+name.className = 'text-white mb-1'
+name.textContent = product.name  // seguro
+
+🔴 src de imagem sem sanitização
+javascript<img src="${product.image_url || '/static/imagens/...'}"
+product.image_url vindo da API poderia ser javascript:alert(1) ou uma URL de phishing. Valide antes de usar:
+javascriptconst isValidUrl = (url) => url?.startsWith('https://') || url?.startsWith('/')
+const imgSrc = isValidUrl(product.image_url) ? product.image_url : '/static/imagens/camiseta-feminina-preta.jpg'
+
+🔴 err.message renderizado como HTML no catch
+javascriptcontainer.innerHTML = `<p class="text-danger">Erro ao carregar carrinho: ${err.message}</p>`
+Mesmo problema — err.message poderia conter HTML. Use textContent:
+javascriptconst errEl = document.createElement('p')
+errEl.className = 'text-danger'
+errEl.textContent = `Erro ao carregar carrinho: ${err.message}`
+container.appendChild(errEl)
+
+🔴 Checkout redireciona apenas para o primeiro link
+javascriptif (data.payment_urls && data.payment_urls.length > 0) {
+    window.location.href = data.payment_urls[0]  // ignora os demais
+}
+Como apontado no cart_usecase.go, o checkout gera uma URL por produto. Com múltiplos itens, apenas o primeiro é pago. Esse é um bug financeiro direto — o usuário paga apenas um item de uma compra com múltiplos produtos.
+
+🟡 loadCart() chamada duas vezes em removeItem
+javascriptasync function removeItem(itemId) {
+    document.getElementById(`item-${itemId}`)?.remove()  // remove do DOM
+    await loadCart()  // recarrega tudo do servidor
+Remove o elemento e recarrega o carrinho inteiro — a remoção do DOM é redundante. Escolha um:
+javascript// Opção 1: só recarrega (mais simples)
+await loadCart()
+
+// Opção 2: só remove do DOM e atualiza total (mais eficiente, sem roundtrip)
+document.getElementById(`item-${itemId}`)?.remove()
+recalculateTotal()
+
+🟡 Cálculo de total no frontend pode divergir do backend
+javascriptconst subtotal = product.price * item.quantity
+total += subtotal
+O total é recalculado no frontend com float — pode divergir do valor no banco por imprecisão de ponto flutuante. Use o total que vem da API se disponível.
+
+🟡 parseInt(this.value) sem validação
+javascriptonchange="updateQuantity(${item.id}, parseInt(this.value))"
+parseInt("abc") retorna NaN. updateQuantity(id, NaN) vai para o backend com valor inválido. Valide:
+javascriptconst qty = parseInt(this.value)
+if (!isNaN(qty) && qty > 0) updateQuantity(${item.id}, qty)
+
+🟢 Sem debounce nos botões de quantidade
+Cliques rápidos em + e - disparam múltiplas requisições simultâneas. Adicione debounce ou desabilite o botão durante a requisição.
+
+
+*/

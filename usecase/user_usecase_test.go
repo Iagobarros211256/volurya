@@ -77,3 +77,51 @@ func TestUserUseCase_Create_DuplicateEmail(t *testing.T) {
 		t.Fatal("expected error for duplicate email, got nil")
 	}
 }
+
+/*
+
+fakeUserRepo.Create tem assinatura diferente do repositório real
+gofunc (f *fakeUserRepo) Create(user models.User) error  // mock
+func (r *UserRepository) Create(user models.User) (int, error)  // real
+O mock não implementa a interface real — o teste compila com uma interface implícita diferente. Se NewUserUseCase aceita a interface real, esse teste nem deveria compilar.
+
+🔴 fakeUserRepo.GetByEmail retorna nil, nil para não encontrado
+goif !ok {
+    return nil, nil
+}
+Propaga o anti-padrão do repository real em vez de usar erro sentinela. Se UserUsecase for corrigido para tratar ErrUserNotFound, o mock vai precisar ser atualizado.
+
+🟡 Senha fraca nos testes
+goPassword: "123456"
+Senha com 6 caracteres provavelmente falha na validação de comprimento mínimo (8 chars) do usecase — o teste TestUserUseCase_Create_Success pode estar testando um caminho de erro mascarado. Use senha válida:
+goPassword: "validPassword123"
+
+🟡 Setup duplicado
+gorepo := newFakeUserRepo()
+uc := NewUserUseCase(repo)
+Repetido em ambos os testes. Extrai helper:
+gofunc setupUserUsecase(t *testing.T) (*UserUsecase, *fakeUserRepo) {
+    t.Helper()
+    repo := newFakeUserRepo()
+    return NewUserUseCase(repo), repo
+}
+
+🟡 Faltam testes importantes
+
+Email inválido → erro
+Senha muito curta → erro
+Senha muito longa → erro
+GetByEmail retornando usuário existente antes do Create
+
+
+🟢 TestUserUseCase_Create_DuplicateEmail não verifica a mensagem de erro
+goerr := uc.Create(user)
+if err == nil {
+    t.Fatal("expected error for duplicate email, got nil")
+}
+Qualquer erro passa — inclusive erros de infraestrutura. Verifique o tipo:
+goif !errors.Is(err, ErrEmailAlreadyExists) {
+    t.Fatalf("expected ErrEmailAlreadyExists, got %v", err)
+}
+
+*/

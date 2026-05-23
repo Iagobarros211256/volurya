@@ -189,3 +189,48 @@ func (pr *ProductRepository) UpdateImageURL(productID int, imageURL string) (*mo
 
 	return &p, nil
 }
+
+/*
+
+
+ Paginação cursor-based tem query com SQL concatenado
+goquery += fmt.Sprintf(" WHERE id > $%d", paramIndex)
+Embora paramIndex seja controlado internamente e não venha do usuário, concatenação de SQL é um hábito arriscado. Nesse caso específico é seguro, mas considere queries separadas para cada caso:
+goconst queryWithCursor = `SELECT ... FROM products WHERE id > $1 ORDER BY id ASC LIMIT $2`
+const queryWithoutCursor = `SELECT ... FROM products ORDER BY id ASC LIMIT $1`
+
+🟡 UpdateProduct atualiza todos os campos obrigatoriamente
+goUPDATE products SET name = $1, description = $2, price = $3, stock = $4
+Se o caller quiser atualizar apenas o stock, precisa passar name, description e price também. Considere um struct de atualização parcial ou queries específicas por campo.
+
+🟡 GetProducts não retorna timestamps
+goSELECT id, user_id, name, description, price, stock, COALESCE(image_url, '')
+created_at e updated_at existem no banco mas não são retornados. O model Product também não os tem — problema já apontado em models/product.go.
+
+🟡 Sem interface
+Padrão recorrente — único repository com erro sentinela mas ainda sem interface para mock.
+
+🟡 connection em vez de db
+Mesma inconsistência dos outros repositories.
+
+🟢 Comentários de desenvolvimento ainda presentes
+gofunc NewProductRepository(connection *sql.DB) *ProductRepository { // ← pointer, mais comum
+// CreateProduct (já estava bom, só melhorei tratamento de erro)
+// GetProductById (corrigido Scan + tratamento de not found)
+// Delete (já estava bom, só melhorei tratamento)
+Comentários de processo de refatoração que não deveriam estar no código final.
+
+🟢 UpdateProduct recebe parâmetros individuais em vez de struct
+gofunc (pr *ProductRepository) UpdateProduct(id int, name string, description string, price float64, stock int)
+Assinatura longa e frágil — adicionar um campo novo quebra todos os callers. Use struct:
+gotype UpdateProductInput struct {
+    Name        string
+    Description string
+    Price       float64
+    Stock       int
+}
+
+func (pr *ProductRepository) UpdateProduct(id int, input UpdateProductInput) (*models.P
+
+
+*/

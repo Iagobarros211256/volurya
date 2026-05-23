@@ -109,3 +109,38 @@
   <script src="/static/js/cart.js"></script>
 </body>
 </html>
+
+
+
+<!--
+
+
+Links sociais com href="#"
+Mesmo problema do about.html — todos apontam para #. Recorrente em todos os templates.
+
+🟡 onclick="checkout()" inline
+html<button id="checkout-btn" ... onclick="checkout()">
+Mistura HTML e JavaScript. Mova para cart.js:
+javascriptdocument.getElementById('checkout-btn').addEventListener('click', checkout)
+
+🟡 Total exibido como R$ 0,00 no HTML mas calculado como R$ 0.00 no JS
+html<span ... id="cart-total">R$ 0,00</span>
+javascript// cart.js
+document.getElementById('cart-total').textContent = `R$ ${total.toFixed(2)}`
+// resultado: "R$ 10.50" com ponto, não vírgula
+Inconsistência de formatação — o placeholder usa vírgula (padrão brasileiro) mas o JS usa ponto. Use toLocaleString:
+javascripttotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+// resultado: "R$ 10,50"
+
+🟢 Footer duplicado em todos os templates
+O mesmo bloco de footer aparece em about.html, cart.html e provavelmente nos outros templates. Com Go templates poderia ser um partial:
+html{{template "footer" .}}
+
+🟢 Navbar duplicada em todos os templates
+Mesmo problema — navbar idêntica repetida. Com Go templates:
+html{{template "navbar" .}}
+
+🟢 lang="pt-br" mas about.html usa lang="en" e adminpanel.html usa lang="en"
+Inconsistência já apontada — padronize.
+
+-->

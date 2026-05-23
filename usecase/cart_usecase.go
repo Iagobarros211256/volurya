@@ -158,3 +158,78 @@ func (uc *CartUsecase) Checkout(userID int, orderUsecase *OrderUsecase) ([]strin
 
 	return paymentURLs, nil
 }
+
+/*
+
+Dependências concretas
+gocartRepo    *repository.CartRepository
+productRepo *repository.ProductRepository
+Padrão recorrente — sem interfaces, sem testes unitários possíveis.
+
+🔴 Checkout recebe *OrderUsecase como parâmetro
+gofunc (uc *CartUsecase) Checkout(userID int, orderUsecase *OrderUsecase) ([]string, error) {
+Já apontado no cart_controller.go — acoplamento circular entre usecases. CartUsecase dependendo de OrderUsecase como parâmetro de método é pior do que injeção via construtor. Injete via construtor ou crie um CheckoutUsecase dedicado.
+
+🔴 Checkout sem transação — estado inconsistente possível
+gofor _, item := range cart.Items {
+    url, err := orderUsecase.CreateOrder(...)
+    if err != nil {
+        return nil, err  // ordens anteriores já foram criadas
+    }
+}
+// Limpa o carrinho após checkout
+uc.cartRepo.ClearCart(cart.ID)
+Se CreateOrder falhar no terceiro item de quatro, dois pedidos foram criados mas o carrinho não foi limpo. Se ClearCart falhar após todas as ordens criadas, o usuário tem ordens duplicadas no próximo checkout. Envolva em transação ou implemente compensação.
+
+🔴 AddItem não verifica estoque total do carrinho
+goif product.Stock < quantity {
+    return nil, ErrInsufficientStock
+}
+Verifica apenas se o estoque é suficiente para a quantidade adicionada agora, mas não considera itens já no carrinho. Se há 5 em estoque e o usuário adiciona 3, depois mais 3, passa na validação mas o checkout vai falhar. Verifique a quantidade total:
+go// Verificar quantidade já no carrinho + nova quantidade
+existingItem, _ := uc.cartRepo.GetItemByProductID(cart.ID, productID)
+totalQuantity := quantity
+if existingItem != nil {
+    totalQuantity += existingItem.Quantity
+}
+if product.Stock < totalQuantity {
+    return nil, ErrInsufficientStock
+}
+
+🔴 product == nil após GetProductById com erro sentinela
+goproduct, err := uc.productRepo.GetProductById(productID)
+if err != nil {
+    return nil, err
+}
+if product == nil {
+    return nil, errors.New("product not found")
+}
+ProductRepository.GetProductById retorna ErrProductNotFound quando não encontrado — nunca retorna nil, nil. A verificação product == nil nunca vai ser verdadeira. Use:
+goif errors.Is(err, repository.ErrProductNotFound) {
+    return nil, errors.New("product not found")
+}
+
+🟡 GetOrCreateCart chamado desnecessariamente em RemoveItem e UpdateItem
+gocart, err := uc.cartRepo.GetOrCreateCart(userID)
+Se o usuário não tem carrinho, GetOrCreateCart cria um — mas um carrinho vazio nunca vai ter o item sendo removido/atualizado. Use GetCart sem criar:
+go// No repository: GetCartByUser sem criar
+cart, err := uc.cartRepo.GetCartByUser(userID)
+if err != nil || cart == nil {
+    return nil, errors.New("cart not found")
+}
+
+🟡 Erros sem wrap e sem erros sentinela
+goreturn nil, errors.New("item not found")
+return nil, errors.New("cart is empty")
+return nil, errors.New("forbidden: item does not belong to your cart")
+Strings de erro sem sentinelas dificultam tratamento no controller. Adicione em errors.go:
+govar ErrItemNotFound = errors.New("item not found")
+var ErrCartEmpty = errors.New("cart is empty")
+var ErrItemNotInCart = errors.New("item does not belong to cart")
+
+🟡 Checkout cria uma ordem por produto em vez de uma ordem com múltiplos itens
+gofor _, item := range cart.Items {
+    url, err := orderUsecase.CreateOrder(userID, item.ProductID, item.Quantity)
+Isso gera N ordens para N produtos no carrinho — o usuário recebe múltiplos links de pagamento. O design correto é uma única ordem com múltiplos order_items, gerando um único checkout.
+
+*/

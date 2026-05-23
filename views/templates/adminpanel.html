@@ -65,3 +65,55 @@
 <script src="/static/js/store-admin.js"></script>
 </body>
 </html>
+
+
+
+<!--
+
+
+Sem verificação de role admin
+html<script src="/static/js/store-admin.js"></script>
+O store-admin.js verifica apenas isLoggedIn() — qualquer usuário autenticado acessa o painel. A página deveria verificar role admin no frontend também:
+javascriptif (!isLoggedIn() || !isAdmin()) {
+    window.location.href = '/store'
+}
+
+🔴 /static/js/main.js não existe
+html<script type="module" src="/static/js/main.js" defer></script>
+Na árvore do projeto não há main.js em static/js — os arquivos são auth.js, cart.js, store.js e store-admin.js. Esse import vai falhar silenciosamente com 404.
+
+🔴 Sem proteção de rota no servidor
+A rota /adminpanel provavelmente não tem RequireAdminRole no main.go — qualquer um pode acessar a URL diretamente. O HTML deveria ser servido apenas para admins autenticados, ou a rota deveria exigir autenticação server-side.
+
+🟡 Modal sem aria-labelledby
+html<div class="modal fade" id="productModal" tabindex="-1">
+Sem aria-labelledby apontando para o título — inacessível para leitores de tela:
+html<div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel">
+<h5 class="modal-title" id="productModalLabel">Product</h5>
+
+🟡 Inputs sem required e sem validação no HTML
+html<input class="form-control" id="productName">
+<input type="number" class="form-control" id="productPrice">
+Sem required, min, max — a validação só existe no JavaScript. Uma primeira linha de defesa no HTML ajuda:
+html<input class="form-control" id="productName" required minlength="1" maxlength="255">
+<input type="number" class="form-control" id="productPrice" required min="0.01" step="0.01">
+<input type="number" class="form-control" id="productStock" required min="0">
+
+🟡 lang="en" mas conteúdo misto
+html<html lang="en">
+O resto do site é lang="pt-br". Esse painel está em inglês mas deveria ser consistente — escolha um idioma e defina o lang corretamente.
+
+🟡 Sem feedback de loading ou erro nas ações
+O painel lista produtos mas não há indicador de loading, estado de erro ao falhar requisição, ou confirmação antes de deletar. Um confirm() básico evita deleções acidentais:
+javascriptif (!confirm(`Deletar "${product.name}"?`)) return
+
+🟢 Load More sem implementação visível
+html<button class="btn btn-primary" id="loadMoreBtn">Load More</button>
+O botão existe mas não há event listener em store-admin.js — não funciona. A paginação cursor-based do backend não está conectada.
+
+🟢 Título genérico
+html<title>Volurya Admin Panel</title>
+Sem indicação da seção atual — se o admin tiver múltiplas abas, não distingue. Considere <title>Produtos — Volurya Admin</title>.
+
+
+-->

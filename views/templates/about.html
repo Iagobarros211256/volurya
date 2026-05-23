@@ -315,3 +315,57 @@
   </script>
 </body>
 </html>
+
+<!--
+
+
+
+ Placeholders não preenchidos em produção
+htmlFundada em [ANO], a banda rapidamente...
+Com [N] anos de estrada, [N] álbuns...
+O nome VOLURYA representa [SIGNIFICADO DO NOME]
+[Bio curta do membro]
+[YEAR] [NAME MEANING]
+Oito placeholders visíveis para o usuário final. Conteúdo incompleto em produção prejudica credibilidade.
+
+🟡 Links de redes sociais sem destino
+html<a href="#" class="fa fa-facebook ..."></a>
+<a href="#" class="fa fa-instagram ..."></a>
+<a href="#" class="fa fa-youtube ..."></a>
+<a href="#" class="fa fa-spotify ..."></a>
+Todos com href="#" — não levam a lugar nenhum. Adicione href="javascript:void(0)" ou os links reais, e aria-label para acessibilidade:
+html<a href="https://instagram.com/volurya" aria-label="Instagram da Volurya" ...>
+
+🟡 Galeria duplica lista de imagens
+javascriptconst galleryImages = [
+    '/static/imagens/VOLURYACENAROCK.jpg',
+    // ... 12 imagens
+]
+As 12 imagens aparecem duas vezes — uma no HTML (onclick="openLightbox(0)") e outra no array JavaScript. Se uma imagem for adicionada/removida, precisa ser atualizada em dois lugares. Gere o HTML da galeria via JavaScript a partir do array, ou use data-index nos elementos.
+
+🟡 onclick inline nos elementos da galeria
+html<img ... onclick="openLightbox(0)">
+Mistura HTML e JavaScript. O índice hardcoded significa que reordenar imagens quebra a galeria. Use event listeners com data-index:
+html<img ... data-index="0" class="gallery-img">
+javascriptdocument.querySelectorAll('.gallery-img').forEach((img, i) => {
+    img.addEventListener('click', () => openLightbox(i))
+})
+
+🟢 CSS inline misturado com stylesheet
+htmlstyle="height: 200px; object-fit: cover;"  <!-- repetido 12 vezes -->
+<!--style="max-width: 150px;"                   <!-- repetido 4 vezes -->
+<!--Mova para a stylesheet:
+css.gallery-img { height: 200px; object-fit: cover; }
+.member-photo { max-width: 150px; }
+
+🟢 <img> do lightbox sem alt
+html<img id="lightbox-img" src="">
+Sem alt — inacessível para leitores de tela. Atualize o alt dinamicamente ao abrir:
+javascriptdocument.getElementById('lightbox-img').alt = `Foto ${currentIndex + 1} da galeria`
+
+🟢 Font Awesome 4.7 desatualizado
+html<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+Versão 4.7 de 2017. Font Awesome 6 tem ícones modernos e melhor suporte. Para o Spotify em particular, FA 4.7 não tem o ícone oficial.
+
+
+-->

@@ -184,3 +184,69 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 </html>
+
+
+
+
+<!--
+
+<script> fora do <body>
+html</body>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/..."></script>
+</html>
+Script após o fechamento do </body> — HTML inválido. Mova para dentro do <body> antes do </body>.
+
+🔴 auth.js não carregado
+Nenhum script de autenticação é carregado — isLoggedIn(), setupNavbar() e connectNotifications() não existem nessa página. A navbar não sincroniza o estado de login/logout.
+
+🔴 Produto hardcoded no HTML
+html<img src="/static/imagens/camiseta-feminina-preta.jpg">
+<h1>Black Basic Shirt Female-Volurya<br>R$ 20,00</h1>
+Preço e produto em HTML estático — se o produto mudar de preço ou for removido, o index fica desatualizado. Carregue via API como na store.html.
+
+🟡 <html> sem lang
+html<html>
+Todos os outros templates têm lang="pt-br" ou lang="en". Faltou aqui.
+
+🟡 Estrutura de div com seção store dentro da seção music
+html<div class="bg-danger" id="musicsection">
+    <!-- ... conteúdo de música ... -->
+    
+    <div class="bg-white" id="storesection">  <!-- store dentro de music -->
+<!--storesection está aninhado dentro de musicsection — estrutura incorreta. São seções independentes e deveriam ser irmãs, não pai/filho.
+
+🟡 integrity no Bootstrap CSS mas não no JS
+html<!-- CSS com integrity -->
+<!--<link href="..." integrity="sha384-T3c6..." crossorigin="anonymous">-->
+
+<!-- JS sem integrity -->
+<!--<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+Inconsistente — o JS deveria ter integrity também para segurança de supply chain.
+
+🟡 View Full Bio e View More com href="#"
+html<a href="#">View Full Bio &raquo;</a>
+<a href="#">View More &raquo;</a>
+Links que não levam a lugar nenhum — deveriam apontar para /about e /store respectivamente.
+
+🟡 Toast declarado no HTML mas sem JavaScript
+html<div id="actionToast" class="toast ...">
+    <div class="toast-body" id="actionToastMsg"></div>
+Toast definido mas sem script para acioná-lo — auth.js não está carregado, então showToast() não existe nessa página. Elemento morto.
+
+🟡 canonical com URL inconsistente
+html<meta rel="canonical" href="http://VOLURYA-Metal.com">
+<meta property="og:url" content="https://volurya.onrender.com">
+Canonical aponta para http://VOLURYA-Metal.com (HTTP, sem www, capitalizado) enquanto OG URL aponta para https://volurya.onrender.com. Deveriam ser a mesma URL e usar HTTPS.
+
+🟢 Navbar duplicada — sem Go template partial
+Mesma navbar copiada de todos os outros templates — já apontado.
+
+🟢 alt="..." em imagem principal
+html<img src="/static/imagens/VOLURYAESTUDIO.jpg" class="d-block w-100" alt="...">
+alt com "..." literal — não descreve a imagem para leitores de tela.
+
+🟢 g-10 não é uma classe Bootstrap válida
+html<div class="row row-cols-2 g-10 text-center">
+Bootstrap vai até g-5. g-10 não tem efeito — use g-4 ou g-5.
+
+-->

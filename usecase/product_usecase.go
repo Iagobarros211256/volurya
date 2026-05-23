@@ -279,3 +279,66 @@ func (pu *ProductUsecase) createImageProcessingCallback(productID, userID int) f
 		// Este callback é apenas para logging de conclusão
 	}
 }
+
+/*
+
+Dependências concretas
+gorepo            *repository.ProductRepository
+imageProcessor  *jobs.ImageProcessor
+storageProvider *storage.R2Storage
+Padrão recorrente — sem interfaces.
+
+🔴 Dois construtores com responsabilidades diferentes
+gofunc NewProductUsecase(repo *repository.ProductRepository) *ProductUsecase
+func NewProductUsecaseWithImageProcessor(...) *ProductUsecase
+O main.go usa NewProductUsecase mas passa imageProcessor separadamente para o controller — o processador nunca é injetado no usecase via construtor. NewProductUsecaseWithImageProcessor existe mas não é usado. Unifique:
+gofunc NewProductUsecase(repo *repository.ProductRepository, imageProcessor *jobs.ImageProcessor, storage *storage.R2Storage) *ProductUsecase
+
+🔴 GetProducts recebe string e converte para int
+gofunc (pu *ProductUsecase) GetProducts(limitStr string, cursorStr string) (...)
+Já apontado no product_controller.go — o controller converte string→int, passa para o usecase que converte de volta. O usecase deveria receber int e *int:
+gofunc (pu *ProductUsecase) GetProducts(limit int, cursor *int) ([]models.Product, *int, bool, error)
+
+🔴 Delete verifica ownership via product.UserID
+goif product.UserID != userID {
+    return errors.New("forbidden: you do not own this product")
+}
+Como apontado na migration, user_id em produtos é design questionável. Além disso, admin deveria poder deletar qualquer produto — o comentário sugere isso mas está desabilitado:
+go// Regra futura para admin (opcional)
+// if userRole == "admin" { ok }
+O middleware RequireAdminRole já garante que só admins chegam aqui — a verificação de ownership é redundante e bloqueia admins de deletar produtos de outros usuários.
+
+🔴 storageCallback retorna URL mesmo com erro de banco
+goreturn publicURL, err // Retorna URL mesmo com erro do DB (pode ser retentado)
+Imagem foi upada no R2 mas o banco não foi atualizado — estado inconsistente. A URL existe no storage mas o produto não a referencia. Sem mecanismo de retry isso fica perdido:
+go// Sem retry implementado, isso cria dados órfãos no R2
+
+🟡 OnComplete e StorageCallback fazem coisas sobrepostas
+Já apontado no image_worker.go — dois callbacks para o mesmo fluxo. StorageCallback já faz o upload e atualiza o banco. OnComplete só loga. O design está confuso — simplifique para um único callback.
+
+🟡 UploadImage recebe store *storage.R2Storage como parâmetro
+gofunc (pu *ProductUsecase) UploadImage(..., store *storage.R2Storage) (*models.Product, error)
+storageProvider já está no struct mas store é passado como parâmetro — qual é usado? No path síncrono usa store, no async usa store também. pu.storageProvider nunca é usado:
+go// storageProvider no struct é inútil — sempre usa o parâmetro
+
+🟡 product == nil após erro sentinela
+goproduct, err := pu.repo.GetProductById(productID)
+if err != nil {
+    return nil, err
+}
+if product == nil {  // nunca verdadeiro com ErrProductNotFound
+    return nil, errors.New("product not found")
+}
+Mesmo problema do cart_usecase.go — GetProductById retorna ErrProductNotFound, nunca nil, nil.
+
+🟡 Nomenclatura inconsistente — id_product, Name, Description
+gofunc (pu *ProductUsecase) UpdateProduct(id_product int, Name string, Description string, ...)
+func (pu *ProductUsecase) GetProductById(id_product int)
+Go usa camelCase. id_product deveria ser productID, Name deveria ser name, Description deveria ser description.
+
+🟡 Comentários de desenvolvimento no código
+goproducts, hasMore, err := pu.repo.GetProducts(limit, cursor) // ← mudou de repository para repo
+productId, err := pu.repo.CreateProduct(product, userID) // ← mudou para repo
+// essas regras nao serao necessarias agora mas no futuro...
+
+*/

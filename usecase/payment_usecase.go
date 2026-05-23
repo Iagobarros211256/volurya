@@ -64,9 +64,9 @@ func (pu *PaymentUsecase) CreateOrderForCheckout(
 
 	// Create order in database with pending status
 	order := models.Order{
-		UserID:   userID,
-		Total:    totalPrice,
-		Status:   string(models.OrderStatusPending),
+		UserID: userID,
+		Total:  totalPrice,
+		Status: string(models.OrderStatusPending),
 	}
 
 	orderID, err := pu.orderRepo.CreateOrder(order)
@@ -230,3 +230,70 @@ func (pu *PaymentUsecase) GetOrderWithPayment(orderID int) (*models.OrderDetail,
 	// For now, it's a placeholder for future implementation
 	return nil, fmt.Errorf("not implemented")
 }
+
+/*
+
+
+ Dependências concretas
+goorderRepo   *repository.OrderRepository
+paymentRepo *repository.PaymentRepository
+productRepo *repository.ProductRepository
+Padrão recorrente — sem interfaces, sem testes unitários.
+
+🔴 CreateOrderForCheckout não decrementa estoque
+goif product.Stock < item.Quantity {
+    return nil, fmt.Errorf("insufficient stock...")
+}
+// valida estoque mas nunca decrementa
+Mesmo problema do order_usecase.go — race condition em compras simultâneas. O estoque deveria ser decrementado atomicamente na criação da ordem:
+goUPDATE products SET stock = stock - $1
+WHERE id = $2 AND stock >= $1
+RETURNING stock
+
+🔴 CreateOrderForCheckout ignora order_items
+goorder := models.Order{
+    UserID: userID,
+    Total:  totalPrice,
+    Status: string(models.OrderStatusPending),
+}
+orderID, err := pu.orderRepo.CreateOrder(order)
+// orderItems calculados mas nunca persistidos no banco
+Os orderItems são calculados e colocados no OrderDetail retornado, mas nunca inseridos no banco. O banco não tem registro de quais produtos fazem parte da ordem — informação financeira perdida.
+
+🔴 GetOrderWithPayment é placeholder em produção
+gofunc (pu *PaymentUsecase) GetOrderWithPayment(orderID int) (*models.OrderDetail, error) {
+    return nil, fmt.Errorf("not implemented")
+}
+Função pública não implementada exposta na API. Se chamada, retorna erro genérico sem indicação de que é um placeholder. Remova ou adicione // TODO:
+go// TODO: implementar busca de ordem com pagamento
+
+🔴 HandlePaymentSuccess não é idempotente
+goerr = pu.paymentRepo.UpdatePaymentStatus(payment.ID, string(models.PaymentStatusSucceeded))
+err = pu.orderRepo.UpdateOrderStatus(payment.OrderID, string(models.OrderStatusPaid))
+Webhooks do Stripe podem ser entregues mais de uma vez. Se payment_intent.succeeded chegar duas vezes, a ordem é processada duas vezes — potencialmente decrementando estoque ou disparando emails duplicados no futuro. Adicione verificação de status atual:
+goif payment.Status == models.PaymentStatusSucceeded {
+    return nil // já processado, idempotente
+}
+
+🟡 CreateOrderForCheckout retorna OrderDetail com timestamps do Go
+goreturn &models.OrderDetail{
+    CreatedAt: time.Now(),
+    UpdatedAt: time.Now(),
+}
+Os timestamps deveriam vir do banco após o INSERT, não serem gerados no Go — podem divergir do valor real armazenado.
+
+🟡 UpdateOrderPaymentIntent passa status pending hardcoded
+gopu.orderRepo.UpdateOrderPaymentIntent(orderID, paymentIntentID, string(models.OrderStatusPending))
+Ao associar um payment intent, o status deveria mudar para algo como payment_pending ou awaiting_payment, não ficar em pending. O status pending era o estado antes do checkout.
+
+🟡 string(models.OrderStatusPaid) — cast desnecessário
+gopu.orderRepo.UpdateOrderStatus(payment.OrderID, string(models.OrderStatusPaid))
+Como apontado no order_repository.go, UpdateOrderStatus deveria aceitar models.OrderStatus diretamente, eliminando esses casts.
+
+🟡 Sem transação entre UpdatePaymentStatus e UpdateOrderStatus
+gopu.paymentRepo.UpdatePaymentStatus(...)   // sucesso
+pu.orderRepo.UpdateOrderStatus(...)       // falha — estados inconsistentes
+Se o segundo update falhar, o pagamento está marcado como sucedido mas a ordem ainda está pendente. Use transação.
+
+
+*/

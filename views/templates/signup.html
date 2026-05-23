@@ -119,3 +119,57 @@
   </script>
 </body>
 </html>
+
+
+<!--
+
+Mesmos problemas do login.html
+Todos se aplicam aqui também — não vou repetir:
+
+Token em localStorage
+trim() nas senhas
+Sem redirecionamento se já logado
+Sem navbar
+Signup duplicado com lógica de auth.js
+
+
+🔴 confirmPassword.value.trim() pode causar falsa correspondência
+javascriptconst password = document.getElementById('password').value.trim()
+const confirmPassword = document.getElementById('confirmPassword').value.trim()
+
+if (password !== confirmPassword) { ... }
+Se o usuário digitar "senha123 " e " senha123", o trim() faz ambos virarem "senha123" — a validação passa mas a senha enviada ao servidor é diferente do que o usuário digitou nos dois campos. Remova trim() das senhas.
+
+🔴 Toggle de senha duplicado de login.html
+javascriptdocument.querySelectorAll('[data-password-toggle]').forEach((button) => {
+    // exatamente o mesmo código de login.html
+Terceira cópia desse código — já está em login.html e possivelmente em outros templates. Mova para auth.js como função reutilizável:
+javascript// auth.js
+function initPasswordToggles() {
+    document.querySelectorAll('[data-password-toggle]').forEach((button) => {
+        // ...
+    })
+}
+document.addEventListener('DOMContentLoaded', initPasswordToggles)
+
+🟡 Validação de senha duplicada
+javascriptif (password.length < 8) {
+    showToast('A senha deve ter pelo menos 8 caracteres', 'danger')
+    return
+}
+O campo já tem minlength="8" — o browser bloqueia o submit antes de chegar nessa verificação JavaScript. A validação JS é redundante aqui (mas inofensiva como defense in depth).
+
+🟡 Sem validação de senha máxima
+O backend valida len(password) > 128 mas o frontend não tem maxlength="128":
+html<input type="password" ... maxlength="128">
+
+🟢 Espaços em branco no HTML
+html<body class="bg-dark text-light">
+
+  
+
+  <!-- Hero -->
+Mesmo resquício do login.html.
+
+
+-->

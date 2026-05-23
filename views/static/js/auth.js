@@ -258,3 +258,76 @@ document.addEventListener('DOMContentLoaded', () => {
   setupNavbar();
   connectNotifications();
 });
+
+
+/*
+
+Token no localStorage — vulnerável a XSS
+javascriptlocalStorage.setItem('token', data.access_token)
+const token = localStorage.getItem('token')
+Já apontado no auth_controller.go — qualquer script injetado na página pode roubar o token. Confirma que a mudança para cookies HttpOnly é necessária no backend. Com cookies HttpOnly, todo esse código de gerenciamento de token no frontend desaparece.
+
+🔴 Token SSE na query string
+javascriptnotificationSource = new EventSource(`${API_BASE}/events?access_token=${encodeURIComponent(token)}`)
+Já apontado no middleware.go — token aparece em logs de servidor, histórico do browser e headers Referer. Com cookies HttpOnly, o EventSource enviaria o cookie automaticamente.
+
+🔴 XSS via innerHTML com dados não sanitizados
+javascriptcontainer.innerHTML = `
+  <div class="toast ...">
+    <div class="toast-body">${message}</div>
+Se message vier de uma resposta da API contendo HTML/JavaScript, executa código arbitrário. Sanitize:
+javascriptconst body = document.createElement('div')
+body.className = 'toast-body'
+body.textContent = message  // textContent não interpreta HTML
+
+🟡 Content-Type: application/json adicionado em todas as requisições
+javascriptoptions.headers = {
+  ...options.headers,
+  'Authorization': `Bearer ${token}`,
+  'Content-Type': 'application/json'  // sempre, inclusive em uploads
+}
+Para uploads de imagem com FormData, Content-Type não deve ser definido manualmente — o browser precisa setar o boundary do multipart automaticamente. Esse interceptor quebra uploads:
+javascriptif (!options.headers?.['Content-Type']) {
+  // só adiciona se não foi explicitamente definido
+}
+
+🟡 isLoggedIn decodifica JWT sem verificar assinatura
+javascriptconst payload = JSON.parse(atob(token.split('.')[1]))
+return payload.exp * 1000 > Date.now()
+Verifica apenas expiração — não valida a assinatura. Um token forjado com exp no futuro passa como válido no frontend. Isso é aceitável para UX (esconder/mostrar UI), mas nunca use para decisões de segurança — o backend valida a assinatura em toda requisição.
+
+🟡 refresh_token salvo em localStorage mas nunca usado
+javascriptlocalStorage.removeItem('refresh_token')  // removido no logout
+O refresh token é armazenado mas não há lógica de refresh automático — quando o access token expira, o usuário é redirecionado para login em vez de fazer refresh silencioso:
+javascriptif (res.status === 401) {
+    // tentar refresh antes de redirecionar
+    const refreshed = await tryRefreshToken()
+    if (refreshed) return originalFetch(url, options)
+    // só então redirecionar
+}
+
+🟡 API_BASE hardcoded com URL do Render
+javascript: 'https://volurya.onrender.com/api'
+URL de produção hardcoded no frontend — dificulta deploy em outros ambientes. Use variável de ambiente injetada no build ou meta tag no HTML:
+html<meta name="api-base" content="https://api.volurya.com">
+javascriptconst API_BASE = document.querySelector('meta[name="api-base"]')?.content || '/api'
+
+🟢 logout não chama o endpoint /api/logout
+javascriptfunction logout() {
+    localStorage.removeItem('token')
+    localStorage.removeItem('refresh_token')
+    // sem chamada ao backend
+}
+O refresh token não é revogado no servidor — continua válido até expirar. Chame o endpoint:
+javascriptasync function logout() {
+    const refreshToken = localStorage.getItem('refresh_token')
+    if (refreshToken) {
+        await fetch(`${API_BASE}/logout`, {
+            method: 'POST',
+            body: JSON.stringify({ refresh_token: refreshToken })
+        }).catch(() => {})  // ignora erro — logout local de qualquer forma
+    }
+    // ...
+}
+
+*/ 

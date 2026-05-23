@@ -44,3 +44,70 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
+
+<!--
+
+Página mais problemática dos templates. Análise:
+
+🔴 Caminhos de script incorretos
+html<script src="auth.js"></script>
+<script src="store-admin.js"></script>
+Sem /static/js/ — os scripts não carregam. Todos os outros templates usam /static/js/auth.js. Essa página está quebrada.
+
+🔴 Bootstrap JS carregado depois dos scripts que dependem dele
+html<script src="auth.js"></script>
+<script src="store-admin.js"></script>
+<script src="https://cdn.jsdelivr.net/.../bootstrap.bundle.min.js"></script>
+store-admin.js provavelmente usa bootstrap.Toast ou bootstrap.Modal — que não existem ainda quando o script roda. Ordem correta:
+html<script src="https://cdn.jsdelivr.net/.../bootstrap.bundle.min.js"></script>
+<script src="/static/js/auth.js"></script>
+<script src="/static/js/store-admin.js"></script>
+
+🔴 Dois templates de admin para a mesma funcionalidade
+storeadmin.html e adminpanel.html são dois templates de painel admin diferentes. Um tem modal, outro tem form inline. Um usa products-list, outro usa productTable. O store-admin.js referencia productsList — qual dos dois é o real? Consolide em um único template.
+
+🔴 Sem verificação de autenticação/role
+Mesmo problema do adminpanel.html — nenhuma verificação server-side de que o usuário é admin. A rota /storeadmin no main.go provavelmente serve esse HTML para qualquer um.
+
+🟡 IDs inconsistentes com store-admin.js
+html<div id="products-list">    <!-- storeadmin.html -->
+<!-- vs -->
+<!--productsList = document.getElementById('productsList')  <!-- store-admin.js espera 'productsList' -->
+
+<!--<div id="login-section">    <!-- storeadmin.html -->
+<!-- vs -->
+<!--loginSection                <!-- store-admin.js espera 'loginSection' -->
+
+<!--<div id="admin-section">    <!-- storeadmin.html -->
+<!-- vs -->
+<!--adminSection                <!-- store-admin.js espera 'adminSection' -->
+<!--Nenhum ID bate com o que o JavaScript espera — a página está completamente quebrada mesmo que os scripts carregassem.
+
+🟡 lang="en" mas interface em inglês/português misturado
+html<html lang="en">
+<h1>Admin Panel - Store</h1>   <!-- inglês -->
+<!--<h3>Login</h3>                  <!-- inglês -->
+<!--<input placeholder="Password">  <!-- inglês -->
+<!--Diferente dos outros templates em pt-br. Escolha um idioma.
+
+🟡 Formulários sem type="submit" nos botões
+html<button class="btn btn-danger">Login</button>
+<button class="btn btn-danger">Add Product</button>
+Sem type="submit" — comportamento depende do browser. Seja explícito:
+html<button type="submit" class="btn btn-danger">Login</button>
+
+🟡 Sem feedback visual de loading ou erro
+Sem spinner, sem toast container, sem estado de erro — a UI trava silenciosamente se a API falhar.
+
+🟢 CSS mínimo — sem styles.css nem fontes
+html<link href="bootstrap.min.css" rel="stylesheet">
+<!-- sem Russo One, sem styles.css, sem Font Awesome -->
+<!--Visual completamente diferente do resto do site — sem a identidade visual da Volurya.
+
+🟢 Sem <meta name="robots" content="noindex">
+Painéis admin não deveriam ser indexados por buscadores:
+html<meta name="robots" content="noindex, nofollow">
+
+
+-->

@@ -141,3 +141,44 @@ func (r *CartRepository) GetItemByID(itemID int) (*models.CartItem, error) {
 	}
 	return &item, nil
 }
+
+/*
+
+
+GetOrCreateCart tem race condition
+go// SELECT — não existe
+// INSERT — outro request pode inserir entre o SELECT e o INSERT
+Dois requests simultâneos do mesmo usuário podem passar pelo SELECT (ambos com ErrNoRows) e tentar o INSERT — o segundo vai falhar com violação de UNIQUE. Use upsert atômico:
+goerr := r.db.QueryRow(`
+    INSERT INTO carts (user_id) VALUES ($1)
+    ON CONFLICT (user_id) DO UPDATE SET user_id = EXCLUDED.user_id
+    RETURNING id, user_id, created_at
+`, userID).Scan(&cart.ID, &cart.UserID, &cart.CreatedAt)
+
+🔴 UpdateItemQuantity não valida ownership
+goUPDATE cart_items SET quantity = $1 WHERE id = $2
+Qualquer usuário autenticado pode atualizar o item de outro usuário se souber o itemID. Adicione validação via cartID:
+goUPDATE cart_items SET quantity = $1
+WHERE id = $2 AND cart_id = $3  -- cart_id pertence ao usuário
+
+🔴 RemoveItem também sem validação de ownership
+goDELETE FROM cart_items WHERE id = $1
+Mesmo problema — sem verificar se o item pertence ao carrinho do usuário:
+goDELETE FROM cart_items WHERE id = $1 AND cart_id = $2
+
+🟡 GetCartItems não retorna image_url do produto
+goSELECT p.id, p.user_id, p.name, p.description, p.price, p.stock
+image_url não está no SELECT mas está no model Product. O frontend não consegue exibir imagens dos itens do carrinho.
+
+🟡 GetOrCreateCart não carrega os itens
+goreturn &cart, nil  // cart.Items é nil
+O caller precisa chamar GetCartItems separadamente. Isso não é necessariamente errado, mas o Cart retornado tem Items: nil em vez de Items: []CartItem{} — pode causar null em vez de [] no JSON.
+
+🟡 Sem interface definida
+Padrão recorrente do projeto — CartRepository é struct concreta sem interface, impedindo mocks nos testes.
+
+🟢 items := make([]CartItem, 0) correto
+Inicializar com make em vez de var items []CartItem garante que serializa como [] em vez de null no JSON quando vazio. Boa prática.
+
+
+*/

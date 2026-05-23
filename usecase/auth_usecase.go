@@ -81,7 +81,7 @@ func (a *AuthUsecase) Signup(email, password string) (string, string, error) {
 
 func (a *AuthUsecase) Login(email, password string) (string, string, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
-	
+
 	user, err := a.userRepo.GetByEmail(email)
 	if err != nil || user == nil {
 		return "", "", errors.New("invalid credentials")
@@ -151,3 +151,77 @@ func (a *AuthUsecase) RefreshToken(refreshToken string) (string, string, error) 
 func (a *AuthUsecase) Logout(refreshToken string) error {
 	return a.refreshTokenRepo.Revoke(refreshToken)
 }
+
+/*
+
+
+ refreshTokenRepo *repository.RefreshTokenRepository concreto
+gotype AuthUsecase struct {
+    userRepo         repository.UserRepositoryInterface  // interface ✅
+    refreshTokenRepo *repository.RefreshTokenRepository  // concreto ❌
+}
+Assimetria clara — userRepo tem interface mas refreshTokenRepo não. É por isso que os testes instanciam o repository real. Defina a interface:
+gotype RefreshTokenRepository interface {
+    Create(userID int, token string, expiresAt time.Time) error
+    GetByToken(token string) (*models.RefreshToken, error)
+    Revoke(token string) error
+}
+
+🔴 Signup verifica email duplicado com SELECT antes do INSERT — race condition
+goexisting, err := a.userRepo.GetByEmail(email)
+if existing != nil {
+    return "", "", errors.New("email already registered")
+}
+// outro goroutine pode inserir aqui
+a.userRepo.Create(user)
+Dois signups simultâneos com o mesmo email passam pelo check e ambos tentam o INSERT. O banco vai rejeitar o segundo com violação de UNIQUE, mas o erro vai vazar como erro interno em vez de "email already registered". Confie na constraint do banco:
+goid, err := a.userRepo.Create(user)
+if err != nil {
+    if errors.Is(err, repository.ErrEmailAlreadyRegistered) {
+        return "", "", errors.New("email already registered")
+    }
+    return "", "", err
+}
+
+🔴 RefreshToken valida o JWT antes de verificar no banco
+goclaims, err := auth.ValidateToken(refreshToken)  // valida JWT
+// ...
+rt, err := a.refreshTokenRepo.GetByToken(refreshToken)  // verifica no banco
+A ordem está invertida. Se o JWT for válido mas o token já foi revogado no banco, o JWT é validado desnecessariamente. Verifique no banco primeiro:
+gort, err := a.refreshTokenRepo.GetByToken(refreshToken)
+if err != nil || rt == nil {
+    return "", "", errors.New("invalid refresh token")
+}
+if rt.Revoked || time.Now().After(rt.ExpiresAt) {
+    return "", "", errors.New("invalid refresh token")
+}
+// só então valida o JWT
+claims, err := auth.ValidateToken(refreshToken)
+
+🟡 Login não limita refresh tokens por usuário
+Cada login cria um novo refresh token sem revogar os anteriores. Um usuário com 1000 logins tem 1000 refresh tokens ativos no banco. Considere revogar tokens anteriores no login ou limitar por quantidade.
+
+🟡 Erros internos sem wrap
+goreturn "", "", err  // bcrypt, GenerateToken, refreshTokenRepo.Create
+Erros de infraestrutura passam direto sem contexto. Em produção é difícil saber qual operação falhou:
+goif err != nil {
+    return "", "", fmt.Errorf("failed to generate access token: %w", err)
+}
+
+🟡 Logout não valida o token antes de revogar
+gofunc (a *AuthUsecase) Logout(refreshToken string) error {
+    return a.refreshTokenRepo.Revoke(refreshToken)
+}
+Qualquer string é aceita como refresh token para logout — sem verificar se pertence ao usuário autenticado. Um usuário poderia tentar revogar tokens de outros usuários se souber o valor.
+
+🟡 Role hardcoded como "user" no Signup
+gouser := models.User{
+    Role: "user",
+}
+Correto para o caso padrão, mas deveria usar a constante:
+goRole: string(models.UserRoleUser),
+
+🟢 metrics.UsersTotal.Inc() só no Signup, não no Login
+Já apontado em metrics.go — Login não incrementa nenhuma métrica. Adicione pelo menos um counter de logins para monitoramento de autenticação.
+
+*/

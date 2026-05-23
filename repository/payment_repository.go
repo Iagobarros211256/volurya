@@ -157,3 +157,66 @@ func (pr *PaymentRepository) ListPaymentsByStatus(status string, limit, offset i
 
 	return payments, rows.Err()
 }
+
+/*
+
+Erros sem wrap em várias funções
+goreturn 0, err           // CreatePaymentRecord
+return nil, err         // GetPaymentByIntentID (caso não-ErrNoRows)
+return nil, err         // GetPaymentByOrderID
+_, err := ... return err // UpdatePaymentStatus, UpdatePaymentStatusWithError, UpdateStripeCustomerID
+return nil, err         // ListPaymentsByStatus
+Nenhum desses erros tem contexto. Padronize:
+goreturn 0, fmt.Errorf("failed to create payment record: %w", err)
+
+🔴 GetPaymentByIntentID não retorna erro sentinela
+goif err == sql.ErrNoRows {
+    return nil, fmt.Errorf("payment record not found")
+}
+Retorna um error genérico em vez de um erro sentinela. O caller não consegue distinguir "não encontrado" de outros erros:
+govar ErrPaymentNotFound = errors.New("payment record not found")
+
+if err == sql.ErrNoRows {
+    return nil, ErrPaymentNotFound
+}
+Mesmo problema em GetPaymentByOrderID.
+
+🔴 CreatePaymentRecord passa time.Now() explicitamente
+gotime.Now(),  // created_at
+time.Now(),  // updated_at
+O banco já tem DEFAULT NOW() para essas colunas na migration. Passar explicitamente é redundante e pode gerar pequena diferença entre os dois time.Now(). Deixe o banco gerenciar:
+go`INSERT INTO payment_records (
+    order_id, payment_intent_id, amount, currency, status, stripe_customer_id, error_message
+) VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id`
+
+🟡 UpdatePaymentStatus recebe string em vez de models.PaymentStatus
+gofunc (pr *PaymentRepository) UpdatePaymentStatus(id int, status string) error {
+models.PaymentStatus já existe — use o tipo para segurança em tempo de compilação:
+gofunc (pr *PaymentRepository) UpdatePaymentStatus(id int, status models.PaymentStatus) error {
+Mesmo problema em UpdatePaymentStatusWithError e ListPaymentsByStatus.
+
+🟡 ListPaymentsByStatus retorna nil em vez de slice vazia
+govar payments []models.PaymentRecord
+// se não houver resultados, retorna nil
+Serializa como null em vez de [] no JSON. Use make:
+gopayments := make([]models.PaymentRecord, 0)
+
+🟡 ListPaymentsByStatus sem validação de limit e offset
+gofunc (pr *PaymentRepository) ListPaymentsByStatus(status string, limit, offset int) {
+limit = 0 retorna zero resultados, limit = 999999 retorna tudo. Adicione validação:
+goif limit <= 0 || limit > 100 {
+    limit = 20
+}
+if offset < 0 {
+    offset = 0
+}
+
+🟡 Sem interface
+Padrão recorrente — sem interface para mock nos testes.
+
+🟡 connection em vez de db
+Mesma inconsistência de nomenclatura do OrderRepository.
+
+
+*/
