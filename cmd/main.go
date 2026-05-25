@@ -204,6 +204,7 @@ func main() {
 		protected.PUT("/cart/items/:itemId", cartController.UpdateItem)
 		protected.DELETE("/cart/items/:itemId", cartController.RemoveItem)
 		protected.POST("/cart/checkout", cartController.Checkout)
+		protected.GET("/auth/me", authController.Me)
 	}
 
 	// Porta

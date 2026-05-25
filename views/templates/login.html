@@ -12,8 +12,6 @@
 </head>
 <body class="bg-dark text-light">
 
- 
-
   <!-- Hero -->
   <section class="hero d-flex justify-content-center align-items-center bg-dark py-5">
     <img src="/static/imagens/VOLURYALOGOVAZADA.png" class="hero-logo" style="max-width: 300px;">
@@ -30,11 +28,24 @@
 
         <form id="loginForm">
           <div class="mb-3">
-            <input type="email" id="email" class="form-control bg-dark text-white border-danger" placeholder="Email" required autofocus>
+            <input type="email" id="email"
+              class="form-control bg-dark text-white border-danger"
+              placeholder="Email"
+              autocomplete="email"
+              required
+              autofocus>
           </div>
           <div class="mb-3 password-field">
-            <input type="password" id="password" class="form-control bg-dark text-white border-danger password-input" placeholder="Senha" required minlength="8">
-            <button type="button" class="password-toggle" data-password-toggle="password" aria-label="Mostrar senha">
+            <input type="password" id="password"
+              class="form-control bg-dark text-white border-danger password-input"
+              placeholder="Senha"
+              autocomplete="current-password"
+              required
+              minlength="8"
+              maxlength="128">
+            <button type="button" class="password-toggle"
+              data-password-toggle="password"
+              aria-label="Mostrar senha">
               <i class="fa fa-eye" aria-hidden="true"></i>
             </button>
           </div>
@@ -49,115 +60,39 @@
     </div>
   </div>
 
- 
-
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/static/js/auth.js"></script>
   <script>
-    document.querySelectorAll('[data-password-toggle]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const input = document.getElementById(button.dataset.passwordToggle);
-        const icon = button.querySelector('.fa');
-        const isHidden = input.type === 'password';
-
-        input.type = isHidden ? 'text' : 'password';
-        button.setAttribute('aria-label', isHidden ? 'Ocultar senha' : 'Mostrar senha');
-        icon.classList.toggle('fa-eye', !isHidden);
-        icon.classList.toggle('fa-eye-slash', isHidden);
-      });
+    // Redireciona se já estiver logado
+    isLoggedIn().then(loggedIn => {
+      if (loggedIn) window.location.href = getAuthRedirect('/store');
     });
 
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value.trim();
+      const password = document.getElementById('password').value; // sem trim na senha
 
       if (!email || !password) {
         showToast('Preencha email e senha', 'danger');
         return;
       }
 
+      const btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      btn.textContent = 'Entrando...';
+
       try {
-        const res = await fetch('/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
-
-        const data = await res.json();
-
-        if (res.ok) {
-          localStorage.setItem('token', data.access_token);
-          localStorage.setItem('refresh_token', data.refresh_token);
-          showToast('Login realizado! Redirecionando...', 'success');
-          setTimeout(() => window.location.href = getAuthRedirect('/store'), 1500);
-        } else {
-          showToast(data.error || 'Email ou senha inválidos', 'danger');
-        }
+        await login(email, password);
+        showToast('Login realizado! Redirecionando...', 'success');
+        setTimeout(() => window.location.href = getAuthRedirect('/store'), 1500);
       } catch (err) {
-        showToast('Erro de conexão. Tente novamente.', 'danger');
+        showToast(err.message || 'Email ou senha inválidos', 'danger');
+        btn.disabled = false;
+        btn.textContent = 'LOGIN';
       }
     });
   </script>
 </body>
 </html>
-
-
-<!--
-
-
-Token salvo em localStorage
-javascriptlocalStorage.setItem('token', data.access_token)
-localStorage.setItem('refresh_token', data.refresh_token)
-Confirmação do problema já apontado em auth.js e auth_controller.go — vulnerável a XSS.
-
-🔴 password.value.trim() remove espaços da senha
-javascriptconst password = document.getElementById('password').value.trim()
-Mesmo problema do store-admin.js — senhas com espaços no início/fim são válidas e trim() as modifica silenciosamente, causando falha de login misteriosa. Remova o .trim() da senha.
-
-🔴 Login duplicado com auth.js
-auth.js já tem uma função login(email, password) — este template reimplementa o mesmo fluxo inline. Se o comportamento mudar em auth.js, este template não é atualizado automaticamente:
-javascript// Substituir todo o submit handler por:
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
-    e.preventDefault()
-    const email = document.getElementById('email').value.trim()
-    const password = document.getElementById('password').value  // sem trim
-    try {
-        await login(email, password)  // função de auth.js
-        setTimeout(() => window.location.href = getAuthRedirect('/store'), 1500)
-    } catch (err) {
-        showToast(err.message || 'Email ou senha inválidos', 'danger')
-    }
-})
-
-🟡 Sem redirecionamento se já estiver logado
-javascript// Falta no início:
-if (isLoggedIn()) {
-    window.location.href = getAuthRedirect('/store')
-}
-Usuário logado que acessa /login vê o formulário normalmente.
-
-🟡 Espaços em branco no HTML
-html<body class="bg-dark text-light">
-
- 
-
-  <!-- Hero -->
-<!--Linhas em branco com espaço antes do Hero e após o body — provavelmente resquício de conteúdo removido.
-
-🟡 Sem navbar
-Todos os outros templates têm navbar. O usuário que chega em /login não tem como navegar para outras páginas sem o botão voltar do browser.
-
-🟢 showToast chamado mas não definido neste escopo sem auth.js
-showToast é definido em auth.js que é carregado antes deste script — funciona, mas a dependência é implícita. Se a ordem dos scripts mudar, quebra silenciosamente.
-
-🟢 Sem autocomplete nos campos
-html<input type="email" id="email" ...>
-<input type="password" id="password" ...>
-Adicione autocomplete para melhorar UX com gerenciadores de senha:
-html<input type="email" autocomplete="email" ...>
-<input type="password" autocomplete="current-password" ...>
-
-
--->

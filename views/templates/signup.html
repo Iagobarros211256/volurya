@@ -12,8 +12,6 @@
 </head>
 <body class="bg-dark text-light">
 
-  
-
   <!-- Hero -->
   <section class="hero d-flex justify-content-center align-items-center bg-dark py-5">
     <img src="/static/imagens/VOLURYALOGOVAZADA.png" class="hero-logo" style="max-width: 300px;">
@@ -30,17 +28,38 @@
 
         <form id="signupForm">
           <div class="mb-3">
-            <input type="email" id="email" class="form-control bg-dark text-white border-danger" placeholder="Email" required autofocus>
+            <input type="email" id="email"
+              class="form-control bg-dark text-white border-danger"
+              placeholder="Email"
+              autocomplete="email"
+              required
+              autofocus>
           </div>
           <div class="mb-3 password-field">
-            <input type="password" id="password" class="form-control bg-dark text-white border-danger password-input" placeholder="Senha (mínimo 8 caracteres)" required minlength="8">
-            <button type="button" class="password-toggle" data-password-toggle="password" aria-label="Mostrar senha">
+            <input type="password" id="password"
+              class="form-control bg-dark text-white border-danger password-input"
+              placeholder="Senha (mínimo 8 caracteres)"
+              autocomplete="new-password"
+              required
+              minlength="8"
+              maxlength="128">
+            <button type="button" class="password-toggle"
+              data-password-toggle="password"
+              aria-label="Mostrar senha">
               <i class="fa fa-eye" aria-hidden="true"></i>
             </button>
           </div>
           <div class="mb-3 password-field">
-            <input type="password" id="confirmPassword" class="form-control bg-dark text-white border-danger password-input" placeholder="Confirmar senha" required minlength="8">
-            <button type="button" class="password-toggle" data-password-toggle="confirmPassword" aria-label="Mostrar senha">
+            <input type="password" id="confirmPassword"
+              class="form-control bg-dark text-white border-danger password-input"
+              placeholder="Confirmar senha"
+              autocomplete="new-password"
+              required
+              minlength="8"
+              maxlength="128">
+            <button type="button" class="password-toggle"
+              data-password-toggle="confirmPassword"
+              aria-label="Mostrar senha">
               <i class="fa fa-eye" aria-hidden="true"></i>
             </button>
           </div>
@@ -55,30 +74,20 @@
     </div>
   </div>
 
- 
-
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/static/js/auth.js"></script>
   <script>
-    document.querySelectorAll('[data-password-toggle]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const input = document.getElementById(button.dataset.passwordToggle);
-        const icon = button.querySelector('.fa');
-        const isHidden = input.type === 'password';
-
-        input.type = isHidden ? 'text' : 'password';
-        button.setAttribute('aria-label', isHidden ? 'Ocultar senha' : 'Mostrar senha');
-        icon.classList.toggle('fa-eye', !isHidden);
-        icon.classList.toggle('fa-eye-slash', isHidden);
-      });
+    // Redireciona se já estiver logado
+    isLoggedIn().then(loggedIn => {
+      if (loggedIn) window.location.href = getAuthRedirect('/store');
     });
 
     document.getElementById('signupForm').addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value.trim();
-      const confirmPassword = document.getElementById('confirmPassword').value.trim();
+      const password = document.getElementById('password').value;         // sem trim
+      const confirmPassword = document.getElementById('confirmPassword').value; // sem trim
 
       if (!email || !password || !confirmPassword) {
         showToast('Preencha todos os campos', 'danger');
@@ -90,14 +99,14 @@
         return;
       }
 
-      if (password.length < 8) {
-        showToast('A senha deve ter pelo menos 8 caracteres', 'danger');
-        return;
-      }
+      const btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      btn.textContent = 'Criando conta...';
 
       try {
-        const res = await fetch('/api/signup', {
+        const res = await originalFetch(`${API_BASE}/signup`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
         });
@@ -105,71 +114,20 @@
         const data = await res.json();
 
         if (res.ok) {
-          localStorage.setItem('token', data.access_token);
-          localStorage.setItem('refresh_token', data.refresh_token);
+          invalidateAuthCache();
           showToast('Conta criada! Redirecionando...', 'success');
           setTimeout(() => window.location.href = getAuthRedirect('/store'), 1500);
         } else {
           showToast(data.error || 'Erro ao criar conta', 'danger');
+          btn.disabled = false;
+          btn.textContent = 'CADASTRAR';
         }
-      } catch (err) {
+      } catch {
         showToast('Erro de conexão. Tente novamente.', 'danger');
+        btn.disabled = false;
+        btn.textContent = 'CADASTRAR';
       }
     });
   </script>
 </body>
 </html>
-
-
-<!--
-
-Mesmos problemas do login.html
-Todos se aplicam aqui também — não vou repetir:
-
-Token em localStorage
-trim() nas senhas
-Sem redirecionamento se já logado
-Sem navbar
-Signup duplicado com lógica de auth.js
-
-
-🔴 confirmPassword.value.trim() pode causar falsa correspondência
-javascriptconst password = document.getElementById('password').value.trim()
-const confirmPassword = document.getElementById('confirmPassword').value.trim()
-
-if (password !== confirmPassword) { ... }
-Se o usuário digitar "senha123 " e " senha123", o trim() faz ambos virarem "senha123" — a validação passa mas a senha enviada ao servidor é diferente do que o usuário digitou nos dois campos. Remova trim() das senhas.
-
-🔴 Toggle de senha duplicado de login.html
-javascriptdocument.querySelectorAll('[data-password-toggle]').forEach((button) => {
-    // exatamente o mesmo código de login.html
-Terceira cópia desse código — já está em login.html e possivelmente em outros templates. Mova para auth.js como função reutilizável:
-javascript// auth.js
-function initPasswordToggles() {
-    document.querySelectorAll('[data-password-toggle]').forEach((button) => {
-        // ...
-    })
-}
-document.addEventListener('DOMContentLoaded', initPasswordToggles)
-
-🟡 Validação de senha duplicada
-javascriptif (password.length < 8) {
-    showToast('A senha deve ter pelo menos 8 caracteres', 'danger')
-    return
-}
-O campo já tem minlength="8" — o browser bloqueia o submit antes de chegar nessa verificação JavaScript. A validação JS é redundante aqui (mas inofensiva como defense in depth).
-
-🟡 Sem validação de senha máxima
-O backend valida len(password) > 128 mas o frontend não tem maxlength="128":
-html<input type="password" ... maxlength="128">
-
-🟢 Espaços em branco no HTML
-html<body class="bg-dark text-light">
-
-  
-
-  <!-- Hero -->
-Mesmo resquício do login.html.
-
-
--->

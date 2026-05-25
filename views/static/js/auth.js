@@ -11,27 +11,45 @@ function showToast(message, type = 'success') {
   const container = document.createElement('div');
   container.className = 'position-fixed bottom-0 end-0 p-3';
   container.style.zIndex = '9999';
-  container.innerHTML = `
-    <div class="toast align-items-center text-bg-${type} border-0" role="alert">
-      <div class="d-flex">
-        <div class="toast-body">${message}</div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-      </div>
-    </div>
-  `;
+
+  const toast = document.createElement('div');
+  toast.className = `toast align-items-center text-bg-${type} border-0`;
+  toast.setAttribute('role', 'alert');
+
+  const inner = document.createElement('div');
+  inner.className = 'd-flex';
+
+  const body = document.createElement('div');
+  body.className = 'toast-body';
+  body.textContent = message; // textContent — sem XSS
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'btn-close btn-close-white me-2 m-auto';
+  closeBtn.dataset.bsDismiss = 'toast';
+
+  inner.appendChild(body);
+  inner.appendChild(closeBtn);
+  toast.appendChild(inner);
+  container.appendChild(toast);
   document.body.appendChild(container);
-  new bootstrap.Toast(container.querySelector('.toast')).show();
+
+  new bootstrap.Toast(toast).show();
   setTimeout(() => container.remove(), 5000);
 }
 
-// Intercepta fetch para adicionar token + tratar 401
+// Intercepta fetch para tratar 401
+// Com cookies HttpOnly, o browser envia o cookie automaticamente
+// Não precisamos mais adicionar Authorization header manualmente
 const originalFetch = window.fetch;
 window.fetch = async (url, options = {}) => {
-  const token = localStorage.getItem('token');
-  if (token) {
+  // Garante que cookies são enviados em todas as requisições
+  options.credentials = 'include';
+
+  // Adiciona Content-Type apenas se não for FormData
+  if (!options.headers?.['Content-Type'] && !(options.body instanceof FormData)) {
     options.headers = {
       ...options.headers,
-      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     };
   }
@@ -39,7 +57,11 @@ window.fetch = async (url, options = {}) => {
   const res = await originalFetch(url, options);
 
   if (res.status === 401) {
-    localStorage.removeItem('token');
+    // Tenta refresh automático antes de redirecionar
+    const refreshed = await tryRefreshToken();
+    if (refreshed) {
+      return originalFetch(url, options);
+    }
     rememberCurrentPage();
     showToast('Sessão expirada. Faça login novamente.', 'danger');
     setTimeout(() => window.location.href = '/login', 1500);
@@ -49,34 +71,66 @@ window.fetch = async (url, options = {}) => {
   return res;
 };
 
-// Verifica token válido
-function isLoggedIn() {
-  const token = localStorage.getItem('token');
-  if (!token) return false;
+// Tenta renovar o access token usando o refresh token (cookie)
+async function tryRefreshToken() {
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.exp * 1000 > Date.now();
+    const res = await originalFetch(`${API_BASE}/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    return res.ok;
   } catch {
-    localStorage.removeItem('token');
     return false;
   }
+}
+
+// Verifica se usuário está logado via endpoint leve
+// Com cookies HttpOnly, não conseguimos ler o token em JS
+// Usamos um endpoint que retorna 200 se o cookie for válido
+async function checkAuthStatus() {
+  try {
+    const res = await originalFetch(`${API_BASE}/auth/me`, {
+      credentials: 'include'
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Cache do estado de autenticação para evitar múltiplas requisições
+let _authStatus = null;
+let _authStatusExpiry = 0;
+
+async function isLoggedIn() {
+  const now = Date.now();
+  if (_authStatus !== null && now < _authStatusExpiry) {
+    return _authStatus;
+  }
+  _authStatus = await checkAuthStatus();
+  _authStatusExpiry = now + 60 * 1000; // cache por 1 minuto
+  return _authStatus;
+}
+
+function invalidateAuthCache() {
+  _authStatus = null;
+  _authStatusExpiry = 0;
 }
 
 function rememberCurrentPage() {
   const path = `${window.location.pathname}${window.location.search}${window.location.hash}`;
   if (!['/login', '/signup'].includes(window.location.pathname)) {
-    localStorage.setItem(AUTH_REDIRECT_KEY, path || '/store');
+    sessionStorage.setItem(AUTH_REDIRECT_KEY, path || '/store');
   }
 }
 
 function getAuthRedirect(defaultPath = '/store') {
-  const redirectTo = localStorage.getItem(AUTH_REDIRECT_KEY);
-  localStorage.removeItem(AUTH_REDIRECT_KEY);
-
+  const redirectTo = sessionStorage.getItem(AUTH_REDIRECT_KEY);
+  sessionStorage.removeItem(AUTH_REDIRECT_KEY);
   if (!redirectTo || redirectTo.startsWith('/login') || redirectTo.startsWith('/signup')) {
     return defaultPath;
   }
-
   return redirectTo;
 }
 
@@ -87,11 +141,15 @@ function goToLogin() {
 
 let notificationSource;
 
-function connectNotifications() {
-  if (notificationSource || !isLoggedIn()) return;
+async function connectNotifications() {
+  if (notificationSource) return;
+  if (!await isLoggedIn()) return;
 
-  const token = localStorage.getItem('token');
-  notificationSource = new EventSource(`${API_BASE}/events?access_token=${encodeURIComponent(token)}`);
+  // Com cookies, o EventSource envia o cookie automaticamente
+  // Não precisamos mais do token na query string
+  notificationSource = new EventSource(`${API_BASE}/events`, {
+    withCredentials: true
+  });
 
   notificationSource.onmessage = handleNotificationEvent;
 
@@ -108,9 +166,9 @@ function connectNotifications() {
   notificationSource.onerror = () => {
     notificationSource.close();
     notificationSource = null;
-    if (isLoggedIn()) {
-      setTimeout(connectNotifications, 5000);
-    }
+    setTimeout(async () => {
+      if (await isLoggedIn()) connectNotifications();
+    }, 5000);
   };
 }
 
@@ -125,18 +183,19 @@ function handleNotificationEvent(event) {
   }
 }
 
-function setupNavbar() {
+async function setupNavbar() {
   const navLists = document.querySelectorAll('.navbar-nav');
   if (navLists.length === 0) return;
+
+  const loggedIn = await isLoggedIn();
 
   navLists.forEach(nav => {
     const loginLink = nav.querySelector('a[href="/login"]');
     if (loginLink) {
       loginLink.addEventListener('click', () => rememberCurrentPage());
     }
-
     ensureCartLink(nav);
-    syncAuthNav(nav);
+    syncAuthNav(nav, loggedIn);
   });
 
   updateCartBadge();
@@ -147,13 +206,22 @@ function ensureCartLink(nav) {
   if (!cartLink) {
     const item = document.createElement('li');
     item.className = 'nav-item';
-    item.innerHTML = `
-      <a class="btn btn-outline-danger btn-sm my-2 nav-link position-relative" href="/cart">
-        <i class="fa fa-shopping-cart"></i>
-        CARRINHO
-        <span class="cart-badge badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle d-none">0</span>
-      </a>
-    `;
+
+    const a = document.createElement('a');
+    a.className = 'btn btn-outline-danger btn-sm my-2 nav-link position-relative';
+    a.href = '/cart';
+
+    const icon = document.createElement('i');
+    icon.className = 'fa fa-shopping-cart';
+
+    const badge = document.createElement('span');
+    badge.className = 'cart-badge badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle d-none';
+    badge.textContent = '0';
+
+    a.appendChild(icon);
+    a.append(' CARRINHO');
+    a.appendChild(badge);
+    item.appendChild(a);
 
     const loginItem = nav.querySelector('a[href="/login"]')?.closest('li');
     nav.insertBefore(item, loginItem || null);
@@ -169,11 +237,11 @@ function ensureCartLink(nav) {
   }
 }
 
-function syncAuthNav(nav) {
+function syncAuthNav(nav, loggedIn) {
   const loginLink = nav.querySelector('a[href="/login"]');
   if (!loginLink) return;
 
-  if (!isLoggedIn()) {
+  if (!loggedIn) {
     loginLink.textContent = 'Entrar';
     loginLink.classList.remove('btn-outline-secondary');
     loginLink.classList.add('btn-outline-primary');
@@ -194,7 +262,7 @@ async function updateCartBadge() {
   const badges = document.querySelectorAll('.cart-badge');
   if (badges.length === 0) return;
 
-  if (!isLoggedIn()) {
+  if (!await isLoggedIn()) {
     setCartBadge(0);
     return;
   }
@@ -205,7 +273,6 @@ async function updateCartBadge() {
       setCartBadge(0);
       return;
     }
-
     const cart = await res.json();
     const count = (cart.items || []).reduce((total, item) => total + item.quantity, 0);
     setCartBadge(count);
@@ -221,23 +288,32 @@ function setCartBadge(count) {
   });
 }
 
-// Logout
-function logout() {
+async function logout() {
   if (notificationSource) {
     notificationSource.close();
     notificationSource = null;
   }
-  localStorage.removeItem('token');
-  localStorage.removeItem('refresh_token');
+
+  try {
+    await originalFetch(`${API_BASE}/logout`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch {
+    // logout local mesmo se o servidor falhar
+  }
+
+  invalidateAuthCache();
   setCartBadge(0);
   showToast('Você saiu!', 'info');
   setTimeout(() => window.location.href = '/login', 1500);
 }
 
-// Login (reutilizável)
 async function login(email, password) {
-  const res = await fetch(`${API_BASE}/login`, {
+  const res = await originalFetch(`${API_BASE}/login`, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password })
   });
@@ -247,87 +323,28 @@ async function login(email, password) {
     throw new Error(err.error || 'Erro ao fazer login');
   }
 
-  const data = await res.json();
-  localStorage.setItem('token', data.access_token);
-  connectNotifications();
-  updateCartBadge();
-  return data;
+  invalidateAuthCache();
+  await connectNotifications();
+  await updateCartBadge();
+}
+
+// Inicialização de toggle de senha — reutilizável em login e signup
+function initPasswordToggles() {
+  document.querySelectorAll('[data-password-toggle]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const input = document.getElementById(button.dataset.passwordToggle);
+      const icon = button.querySelector('.fa');
+      const isHidden = input.type === 'password';
+      input.type = isHidden ? 'text' : 'password';
+      button.setAttribute('aria-label', isHidden ? 'Ocultar senha' : 'Mostrar senha');
+      icon.classList.toggle('fa-eye', !isHidden);
+      icon.classList.toggle('fa-eye-slash', isHidden);
+    });
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   setupNavbar();
   connectNotifications();
+  initPasswordToggles();
 });
-
-
-/*
-
-Token no localStorage — vulnerável a XSS
-javascriptlocalStorage.setItem('token', data.access_token)
-const token = localStorage.getItem('token')
-Já apontado no auth_controller.go — qualquer script injetado na página pode roubar o token. Confirma que a mudança para cookies HttpOnly é necessária no backend. Com cookies HttpOnly, todo esse código de gerenciamento de token no frontend desaparece.
-
-🔴 Token SSE na query string
-javascriptnotificationSource = new EventSource(`${API_BASE}/events?access_token=${encodeURIComponent(token)}`)
-Já apontado no middleware.go — token aparece em logs de servidor, histórico do browser e headers Referer. Com cookies HttpOnly, o EventSource enviaria o cookie automaticamente.
-
-🔴 XSS via innerHTML com dados não sanitizados
-javascriptcontainer.innerHTML = `
-  <div class="toast ...">
-    <div class="toast-body">${message}</div>
-Se message vier de uma resposta da API contendo HTML/JavaScript, executa código arbitrário. Sanitize:
-javascriptconst body = document.createElement('div')
-body.className = 'toast-body'
-body.textContent = message  // textContent não interpreta HTML
-
-🟡 Content-Type: application/json adicionado em todas as requisições
-javascriptoptions.headers = {
-  ...options.headers,
-  'Authorization': `Bearer ${token}`,
-  'Content-Type': 'application/json'  // sempre, inclusive em uploads
-}
-Para uploads de imagem com FormData, Content-Type não deve ser definido manualmente — o browser precisa setar o boundary do multipart automaticamente. Esse interceptor quebra uploads:
-javascriptif (!options.headers?.['Content-Type']) {
-  // só adiciona se não foi explicitamente definido
-}
-
-🟡 isLoggedIn decodifica JWT sem verificar assinatura
-javascriptconst payload = JSON.parse(atob(token.split('.')[1]))
-return payload.exp * 1000 > Date.now()
-Verifica apenas expiração — não valida a assinatura. Um token forjado com exp no futuro passa como válido no frontend. Isso é aceitável para UX (esconder/mostrar UI), mas nunca use para decisões de segurança — o backend valida a assinatura em toda requisição.
-
-🟡 refresh_token salvo em localStorage mas nunca usado
-javascriptlocalStorage.removeItem('refresh_token')  // removido no logout
-O refresh token é armazenado mas não há lógica de refresh automático — quando o access token expira, o usuário é redirecionado para login em vez de fazer refresh silencioso:
-javascriptif (res.status === 401) {
-    // tentar refresh antes de redirecionar
-    const refreshed = await tryRefreshToken()
-    if (refreshed) return originalFetch(url, options)
-    // só então redirecionar
-}
-
-🟡 API_BASE hardcoded com URL do Render
-javascript: 'https://volurya.onrender.com/api'
-URL de produção hardcoded no frontend — dificulta deploy em outros ambientes. Use variável de ambiente injetada no build ou meta tag no HTML:
-html<meta name="api-base" content="https://api.volurya.com">
-javascriptconst API_BASE = document.querySelector('meta[name="api-base"]')?.content || '/api'
-
-🟢 logout não chama o endpoint /api/logout
-javascriptfunction logout() {
-    localStorage.removeItem('token')
-    localStorage.removeItem('refresh_token')
-    // sem chamada ao backend
-}
-O refresh token não é revogado no servidor — continua válido até expirar. Chame o endpoint:
-javascriptasync function logout() {
-    const refreshToken = localStorage.getItem('refresh_token')
-    if (refreshToken) {
-        await fetch(`${API_BASE}/logout`, {
-            method: 'POST',
-            body: JSON.stringify({ refresh_token: refreshToken })
-        }).catch(() => {})  // ignora erro — logout local de qualquer forma
-    }
-    // ...
-}
-
-*/ 
