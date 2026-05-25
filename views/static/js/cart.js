@@ -1,12 +1,8 @@
-
-
 document.addEventListener('DOMContentLoaded', async () => {
-  // Redireciona se não estiver logado
   if (!isLoggedIn()) {
     goToLogin();
     return;
   }
-
   await loadCart();
 });
 
@@ -44,43 +40,106 @@ async function loadCart() {
       const row = document.createElement('div');
       row.className = 'row align-items-center mb-3 p-3 bg-secondary rounded';
       row.id = `item-${item.id}`;
-      row.innerHTML = `
-        <div class="col-3 col-md-2">
-          <img src="${product.image_url || '/static/imagens/camiseta-feminina-preta.jpg'}"
-               class="img-fluid rounded" alt="${product.name}">
-        </div>
-        <div class="col-9 col-md-4 text-start">
-          <h6 class="text-white mb-1">${product.name}</h6>
-          <p class="text-danger mb-0 fw-bold">R$ ${product.price.toFixed(2)}</p>
-        </div>
-        <div class="col-6 col-md-3 mt-2 mt-md-0">
-          <div class="input-group input-group-sm">
-            <button class="btn btn-outline-danger" onclick="updateQuantity(${item.id}, ${item.quantity - 1})">-</button>
-            <input type="number" class="form-control bg-dark text-white text-center border-danger"
-                   value="${item.quantity}" min="1"
-                   onchange="updateQuantity(${item.id}, parseInt(this.value))"
-                   id="qty-${item.id}">
-            <button class="btn btn-outline-danger" onclick="updateQuantity(${item.id}, ${item.quantity + 1})">+</button>
-          </div>
-        </div>
-        <div class="col-4 col-md-2 mt-2 mt-md-0 text-end">
-          <p class="text-white mb-0 fw-bold">R$ ${subtotal.toFixed(2)}</p>
-        </div>
-        <div class="col-2 col-md-1 mt-2 mt-md-0 text-end">
-          <button class="btn btn-sm btn-outline-danger" onclick="removeItem(${item.id})">
-            <i class="fa fa-trash"></i>
-          </button>
-        </div>
-      `;
+
+      // Coluna da imagem
+      const imgCol = document.createElement('div');
+      imgCol.className = 'col-3 col-md-2';
+      const img = document.createElement('img');
+      const imgSrc = isValidImageUrl(product.image_url)
+        ? product.image_url
+        : '/static/imagens/camiseta-feminina-preta.jpg';
+      img.src = imgSrc;
+      img.className = 'img-fluid rounded';
+      img.alt = product.name; // textContent seguro via propriedade
+      imgCol.appendChild(img);
+
+      // Coluna do nome e preço
+      const infoCol = document.createElement('div');
+      infoCol.className = 'col-9 col-md-4 text-start';
+      const name = document.createElement('h6');
+      name.className = 'text-white mb-1';
+      name.textContent = product.name; // seguro
+      const price = document.createElement('p');
+      price.className = 'text-danger mb-0 fw-bold';
+      price.textContent = `R$ ${product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+      infoCol.appendChild(name);
+      infoCol.appendChild(price);
+
+      // Coluna de quantidade
+      const qtyCol = document.createElement('div');
+      qtyCol.className = 'col-6 col-md-3 mt-2 mt-md-0';
+      const inputGroup = document.createElement('div');
+      inputGroup.className = 'input-group input-group-sm';
+
+      const btnMinus = document.createElement('button');
+      btnMinus.className = 'btn btn-outline-danger';
+      btnMinus.textContent = '-';
+      btnMinus.addEventListener('click', () => updateQuantity(item.id, item.quantity - 1));
+
+      const qtyInput = document.createElement('input');
+      qtyInput.type = 'number';
+      qtyInput.className = 'form-control bg-dark text-white text-center border-danger';
+      qtyInput.value = item.quantity;
+      qtyInput.min = 1;
+      qtyInput.id = `qty-${item.id}`;
+      qtyInput.addEventListener('change', () => {
+        const val = parseInt(qtyInput.value);
+        if (!isNaN(val) && val > 0) {
+          updateQuantity(item.id, val);
+        }
+      });
+
+      const btnPlus = document.createElement('button');
+      btnPlus.className = 'btn btn-outline-danger';
+      btnPlus.textContent = '+';
+      btnPlus.addEventListener('click', () => updateQuantity(item.id, item.quantity + 1));
+
+      inputGroup.appendChild(btnMinus);
+      inputGroup.appendChild(qtyInput);
+      inputGroup.appendChild(btnPlus);
+      qtyCol.appendChild(inputGroup);
+
+      // Coluna do subtotal
+      const subtotalCol = document.createElement('div');
+      subtotalCol.className = 'col-4 col-md-2 mt-2 mt-md-0 text-end';
+      const subtotalP = document.createElement('p');
+      subtotalP.className = 'text-white mb-0 fw-bold';
+      subtotalP.textContent = `R$ ${subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+      subtotalCol.appendChild(subtotalP);
+
+      // Coluna do botão remover
+      const removeCol = document.createElement('div');
+      removeCol.className = 'col-2 col-md-1 mt-2 mt-md-0 text-end';
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'btn btn-sm btn-outline-danger';
+      removeBtn.innerHTML = '<i class="fa fa-trash"></i>'; // ícone estático, sem dados da API
+      removeBtn.addEventListener('click', () => removeItem(item.id));
+      removeCol.appendChild(removeBtn);
+
+      row.appendChild(imgCol);
+      row.appendChild(infoCol);
+      row.appendChild(qtyCol);
+      row.appendChild(subtotalCol);
+      row.appendChild(removeCol);
       container.appendChild(row);
     });
 
-    document.getElementById('cart-total').textContent = `R$ ${total.toFixed(2)}`;
+    document.getElementById('cart-total').textContent =
+      `R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 
   } catch (err) {
     loading.style.display = 'none';
-    container.innerHTML = `<p class="text-danger">Erro ao carregar carrinho: ${err.message}</p>`;
+    const errP = document.createElement('p');
+    errP.className = 'text-danger';
+    errP.textContent = 'Erro ao carregar carrinho. Tente novamente.';
+    container.appendChild(errP);
   }
+}
+
+// Valida se a URL da imagem é segura
+function isValidImageUrl(url) {
+  if (!url) return false;
+  return url.startsWith('https://') || url.startsWith('/');
 }
 
 async function updateQuantity(itemId, quantity) {
@@ -102,8 +161,8 @@ async function updateQuantity(itemId, quantity) {
       const data = await res.json();
       showToast(data.error || 'Erro ao atualizar', 'danger');
     }
-  } catch (err) {
-    showToast(err.message, 'danger');
+  } catch {
+    showToast('Erro ao atualizar item', 'danger');
   }
 }
 
@@ -114,14 +173,13 @@ async function removeItem(itemId) {
     });
 
     if (res.ok) {
-      document.getElementById(`item-${itemId}`)?.remove();
       await loadCart();
       updateCartBadge();
     } else {
       showToast('Erro ao remover item', 'danger');
     }
-  } catch (err) {
-    showToast(err.message, 'danger');
+  } catch {
+    showToast('Erro ao remover item', 'danger');
   }
 }
 
@@ -144,71 +202,9 @@ async function checkout() {
       btn.disabled = false;
       btn.textContent = 'FINALIZAR COMPRA';
     }
-  } catch (err) {
-    showToast(err.message, 'danger');
+  } catch {
+    showToast('Erro de conexão', 'danger');
     btn.disabled = false;
     btn.textContent = 'FINALIZAR COMPRA';
   }
 }
-
-
-/*
-
- XSS via innerHTML com dados da API
-javascriptrow.innerHTML = `
-  <h6 class="text-white mb-1">${product.name}</h6>
-  <p class="text-danger mb-0 fw-bold">R$ ${product.price.toFixed(2)}</p>
-`
-Se product.name contiver <script> ou "><img onerror="...">, executa código arbitrário. Use textContent para dados dinâmicos:
-javascriptconst name = document.createElement('h6')
-name.className = 'text-white mb-1'
-name.textContent = product.name  // seguro
-
-🔴 src de imagem sem sanitização
-javascript<img src="${product.image_url || '/static/imagens/...'}"
-product.image_url vindo da API poderia ser javascript:alert(1) ou uma URL de phishing. Valide antes de usar:
-javascriptconst isValidUrl = (url) => url?.startsWith('https://') || url?.startsWith('/')
-const imgSrc = isValidUrl(product.image_url) ? product.image_url : '/static/imagens/camiseta-feminina-preta.jpg'
-
-🔴 err.message renderizado como HTML no catch
-javascriptcontainer.innerHTML = `<p class="text-danger">Erro ao carregar carrinho: ${err.message}</p>`
-Mesmo problema — err.message poderia conter HTML. Use textContent:
-javascriptconst errEl = document.createElement('p')
-errEl.className = 'text-danger'
-errEl.textContent = `Erro ao carregar carrinho: ${err.message}`
-container.appendChild(errEl)
-
-🔴 Checkout redireciona apenas para o primeiro link
-javascriptif (data.payment_urls && data.payment_urls.length > 0) {
-    window.location.href = data.payment_urls[0]  // ignora os demais
-}
-Como apontado no cart_usecase.go, o checkout gera uma URL por produto. Com múltiplos itens, apenas o primeiro é pago. Esse é um bug financeiro direto — o usuário paga apenas um item de uma compra com múltiplos produtos.
-
-🟡 loadCart() chamada duas vezes em removeItem
-javascriptasync function removeItem(itemId) {
-    document.getElementById(`item-${itemId}`)?.remove()  // remove do DOM
-    await loadCart()  // recarrega tudo do servidor
-Remove o elemento e recarrega o carrinho inteiro — a remoção do DOM é redundante. Escolha um:
-javascript// Opção 1: só recarrega (mais simples)
-await loadCart()
-
-// Opção 2: só remove do DOM e atualiza total (mais eficiente, sem roundtrip)
-document.getElementById(`item-${itemId}`)?.remove()
-recalculateTotal()
-
-🟡 Cálculo de total no frontend pode divergir do backend
-javascriptconst subtotal = product.price * item.quantity
-total += subtotal
-O total é recalculado no frontend com float — pode divergir do valor no banco por imprecisão de ponto flutuante. Use o total que vem da API se disponível.
-
-🟡 parseInt(this.value) sem validação
-javascriptonchange="updateQuantity(${item.id}, parseInt(this.value))"
-parseInt("abc") retorna NaN. updateQuantity(id, NaN) vai para o backend com valor inválido. Valide:
-javascriptconst qty = parseInt(this.value)
-if (!isNaN(qty) && qty > 0) updateQuantity(${item.id}, qty)
-
-🟢 Sem debounce nos botões de quantidade
-Cliques rápidos em + e - disparam múltiplas requisições simultâneas. Adicione debounce ou desabilite o botão durante a requisição.
-
-
-*/

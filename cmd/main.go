@@ -62,6 +62,7 @@ func main() {
 	defer imageProcessor.Shutdown()
 	notificationHub := notifications.NewHub()
 
+	//templates do frontend
 	router.LoadHTMLGlob("views/templates/*")
 	router.Static("/static", "./views/static")
 

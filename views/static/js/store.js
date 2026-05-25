@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   try {
     const res = await fetch('/api/products?limit=12');
-
     if (!res.ok) throw new Error('Erro ao carregar produtos');
 
     const { data } = await res.json();
@@ -22,109 +21,118 @@ document.addEventListener('DOMContentLoaded', async () => {
     data.forEach(product => {
       const col = document.createElement('div');
       col.className = 'col';
-      col.innerHTML = `
-        <div class="card bg-dark border-danger h-100 shadow-lg">
-          <img src="/static/imagens/camiseta-feminina-preta.jpg" class="card-img-top" alt="${product.name}">
-          <div class="card-body d-flex flex-column">
-            <h5 class="card-title text-danger">${product.name}</h5>
-            <p class="card-text flex-grow-1">${product.description || 'Produto oficial VOLURYA'}</p>
-            <div class="mt-auto">
-              <p class="card-text fw-bold fs-4 text-success">R$ ${product.price.toFixed(2)}</p>
-              <p class="card-text text-muted small">Estoque: ${product.stock}</p>
-              <button class="btn btn-outline-danger w-100 buy-btn" data-id="${product.id}">
-                Comprar
-              </button>
-            </div>
-          </div>
-        </div>
-      `;
-      container.appendChild(col);
 
-      // listener adicionado direto no botão após criação
-      col.querySelector('.buy-btn').addEventListener('click', async () => {
+      // Card
+      const card = document.createElement('div');
+      card.className = 'card bg-dark border-danger h-100 shadow-lg';
+
+      // Imagem — usa image_url real se disponível e segura
+      const img = document.createElement('img');
+      img.src = isValidImageUrl(product.image_url)
+        ? product.image_url
+        : '/static/imagens/camiseta-feminina-preta.jpg';
+      img.className = 'card-img-top';
+      img.alt = product.name; // propriedade — não interpreta HTML
+
+      // Card body
+      const cardBody = document.createElement('div');
+      cardBody.className = 'card-body d-flex flex-column';
+
+      // Nome
+      const title = document.createElement('h5');
+      title.className = 'card-title text-danger';
+      title.textContent = product.name; // seguro
+
+      // Descrição
+      const desc = document.createElement('p');
+      desc.className = 'card-text flex-grow-1';
+      desc.textContent = product.description || 'Produto oficial VOLURYA'; // seguro
+
+      // Preço
+      const priceWrapper = document.createElement('div');
+      priceWrapper.className = 'mt-auto';
+
+      const priceP = document.createElement('p');
+      priceP.className = 'card-text fw-bold fs-4 text-success';
+      priceP.textContent = product.price.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      });
+
+      // Estoque
+      const stockP = document.createElement('p');
+      stockP.className = 'card-text text-muted small';
+      const outOfStock = product.stock === 0;
+      stockP.textContent = outOfStock ? 'Esgotado' : `Estoque: ${product.stock}`;
+
+      // Botão comprar
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-outline-danger w-100';
+      btn.textContent = outOfStock ? 'Esgotado' : 'Adicionar ao Carrinho';
+      btn.disabled = outOfStock;
+
+      btn.addEventListener('click', async () => {
         if (!isLoggedIn()) {
           goToLogin();
           return;
         }
 
+        btn.disabled = true;
+        btn.textContent = 'Adicionando...';
+
         try {
-          const res = await fetch('/api/orders', {
+          const res = await fetch('/api/cart/items', {
             method: 'POST',
-            body: JSON.stringify({ product_id: parseInt(product.id), quantity: 1 })
+            body: JSON.stringify({ product_id: product.id, quantity: 1 })
           });
 
-          const data = await res.json();
+          const resData = await res.json();
+
           if (res.ok) {
             updateCartBadge();
-            window.location.href = data.payment_url;
+            showToast('Produto adicionado ao carrinho!', 'success');
+            btn.textContent = 'Adicionado ✓';
+            setTimeout(() => {
+              btn.disabled = outOfStock;
+              btn.textContent = outOfStock ? 'Esgotado' : 'Adicionar ao Carrinho';
+            }, 2000);
           } else {
-            showToast(data.error, 'danger');
+            showToast(resData.error || 'Erro ao adicionar', 'danger');
+            btn.disabled = outOfStock;
+            btn.textContent = outOfStock ? 'Esgotado' : 'Adicionar ao Carrinho';
           }
-        } catch (err) {
-          showToast(err.message, 'danger');
+        } catch {
+          showToast('Erro de conexão', 'danger');
+          btn.disabled = outOfStock;
+          btn.textContent = outOfStock ? 'Esgotado' : 'Adicionar ao Carrinho';
         }
       });
+
+      priceWrapper.appendChild(priceP);
+      priceWrapper.appendChild(stockP);
+      priceWrapper.appendChild(btn);
+
+      cardBody.appendChild(title);
+      cardBody.appendChild(desc);
+      cardBody.appendChild(priceWrapper);
+
+      card.appendChild(img);
+      card.appendChild(cardBody);
+      col.appendChild(card);
+      container.appendChild(col);
     });
 
-  } catch (err) {
-    container.innerHTML = `<p class="col-12 text-center text-danger fs-4">Erro ao carregar produtos: ${err.message}</p>`;
+  } catch {
+    const errP = document.createElement('p');
+    errP.className = 'col-12 text-center text-danger fs-4';
+    errP.textContent = 'Erro ao carregar produtos. Tente novamente.';
+    container.appendChild(errP);
   } finally {
     loading.style.display = 'none';
   }
 });
 
-
-/*
-
-XSS via innerHTML com dados da API
-javascriptcol.innerHTML = `
-    <h5 class="card-title text-danger">${product.name}</h5>
-    <p class="card-text flex-grow-1">${product.description || '...'}</p>
-product.name e product.description não sanitizados — mesmo problema do cart.js e store-admin.js. Use textContent para dados dinâmicos.
-
-🔴 err.message renderizado como HTML
-javascriptcontainer.innerHTML = `<p ...>Erro ao carregar produtos: ${err.message}</p>`
-Mesmo padrão inseguro dos outros arquivos JS.
-
-🔴 Imagem hardcoded — ignora product.image_url
-javascript<img src="/static/imagens/camiseta-feminina-preta.jpg" alt="${product.name}">
-O backend tem toda a infraestrutura de upload e processamento de imagens — R2 storage, worker pool, migration — mas a loja sempre mostra a mesma imagem estática. Todo esse trabalho de backend não está sendo usado:
-javascriptconst imgSrc = product.image_url || '/static/imagens/camiseta-feminina-preta.jpg'
-
-🔴 Compra sem adicionar ao carrinho
-javascriptconst res = await fetch('/api/orders', {
-    method: 'POST',
-    body: JSON.stringify({ product_id: parseInt(product.id), quantity: 1 })
-})
-window.location.href = data.payment_url
-O botão "Comprar" cria uma ordem diretamente — bypassa o carrinho completamente. O usuário não pode escolher quantidade, não vê o total, não pode revisar antes de pagar. O fluxo correto seria adicionar ao carrinho:
-javascriptawait fetch('/api/cart/items', {
-    method: 'POST',
-    body: JSON.stringify({ product_id: product.id, quantity: 1 })
-})
-window.location.href = '/cart'
-
-🟡 Sem paginação — carrega apenas os primeiros 12 produtos
-javascriptfetch('/api/products?limit=12')
-Carrega só 12 e não há botão de "carregar mais" ou paginação. O cursor-based pagination implementado no backend não é usado.
-
-🟡 parseInt(product.id) desnecessário
-javascriptproduct_id: parseInt(product.id)
-product.id já vem como número do JSON — parseInt é redundante e pode mascarar problemas se o tipo mudar.
-
-🟡 alt do img não sanitizado
-javascript<img src="..." alt="${product.name}">
-Dentro de innerHTML, alt com aspas no nome pode quebrar o HTML: um produto chamado "Test" onload="..." injeta atributos. Com textContent isso não ocorre — mais um motivo para evitar innerHTML.
-
-🟡 Sem tratamento de estoque esgotado
-javascript<button class="btn btn-outline-danger w-100 buy-btn" data-id="${product.id}">
-    Comprar
-</button>
-Produtos com stock === 0 mostram o botão ativo. Deveria desabilitar:
-javascriptconst outOfStock = product.stock === 0
-// button disabled + texto "Esgotado"
-
-
-
-
-*/
+function isValidImageUrl(url) {
+  if (!url) return false;
+  return url.startsWith('https://') || url.startsWith('/');
+}
