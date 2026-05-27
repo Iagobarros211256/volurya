@@ -3,26 +3,26 @@ package middleware
 import (
 	"api/logger"
 	"api/metrics"
-	"fmt"
 	"log/slog"
-	"math/rand"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
-func RequestLogger() gin.HandlerFunc {
+// RequestID gera um UUID único por requisição e loga quando completa.
+// Substitui tanto request_id.go quanto o logger.go anterior.
+func RequestID() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		start := time.Now()
-
-		requestID := fmt.Sprintf("%08x", rand.Uint32())
+		requestID := uuid.New().String()
 		c.Set("request_id", requestID)
 		c.Header("X-Request-ID", requestID)
 
+		start := time.Now()
 		c.Next()
-
 		duration := time.Since(start)
+
 		status := c.Writer.Status()
 
 		level := slog.LevelInfo
@@ -32,31 +32,40 @@ func RequestLogger() gin.HandlerFunc {
 			level = slog.LevelWarn
 		}
 
-		userID, _ := c.Get("user_id")
+		path := c.FullPath()
+		if path == "" {
+			path = c.Request.URL.Path
+		}
 
-		logger.Log.Log(
-			c.Request.Context(),
-			level,
-			"request completed",
+		args := []any{
 			"request_id", requestID,
 			"method", c.Request.Method,
-			"path", c.FullPath(),
+			"path", path,
 			"status", status,
 			"duration_ms", duration.Milliseconds(),
 			"ip", c.ClientIP(),
-			"user_id", userID,
-		)
+		}
 
-		// Métricas Prometheus
+		if userID, exists := c.Get("user_id"); exists {
+			args = append(args, "user_id", userID)
+		}
+
+		logger.Log.Log(c.Request.Context(), level, "request completed", args...)
+
 		metrics.HttpRequestsTotal.WithLabelValues(
 			c.Request.Method,
-			c.FullPath(),
+			path,
 			strconv.Itoa(status),
 		).Inc()
 
 		metrics.HttpRequestDuration.WithLabelValues(
 			c.Request.Method,
-			c.FullPath(),
+			path,
 		).Observe(duration.Seconds())
 	}
+}
+
+// RequestLogger é um alias para compatibilidade com main.go
+func RequestLogger() gin.HandlerFunc {
+	return RequestID()
 }

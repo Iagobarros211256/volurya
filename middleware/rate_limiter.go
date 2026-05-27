@@ -8,27 +8,77 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const maxClientsLimit = 10000
+
+type clientLimiter struct {
+	requests []time.Time
+	mu       sync.Mutex
+}
+
 type RateLimiter struct {
 	maxRequests int
 	window      time.Duration
-	clients     map[string]*clientLimiter
-	mu          sync.Mutex
-}
-
-type clientLimiter struct {
-	requests  []time.Time
-	mu        sync.Mutex
+	clients     sync.Map // substitui map + mutex global
 }
 
 func NewRateLimiter(maxRequests int, window time.Duration) *RateLimiter {
-	limiter := &RateLimiter{
+	rl := &RateLimiter{
 		maxRequests: maxRequests,
 		window:      window,
-		clients:     make(map[string]*clientLimiter),
 	}
+	go rl.cleanup()
+	return rl
+}
 
-	go limiter.cleanup()
-	return limiter
+func (rl *RateLimiter) Middleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		clientIP := c.ClientIP()
+
+		// Proteção contra DoS por memória
+		count := 0
+		rl.clients.Range(func(_, _ any) bool {
+			count++
+			return count < maxClientsLimit
+		})
+		if count >= maxClientsLimit {
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "server busy"})
+			c.Abort()
+			return
+		}
+
+		// Carrega ou cria o clientLimiter para este IP
+		val, _ := rl.clients.LoadOrStore(clientIP, &clientLimiter{
+			requests: make([]time.Time, 0),
+		})
+		client := val.(*clientLimiter)
+
+		client.mu.Lock()
+		defer client.mu.Unlock()
+
+		now := time.Now()
+
+		// Filtra requests dentro da janela
+		valid := client.requests[:0]
+		for _, t := range client.requests {
+			if now.Sub(t) < rl.window {
+				valid = append(valid, t)
+			}
+		}
+		client.requests = valid
+
+		if len(client.requests) >= rl.maxRequests {
+			c.Header("Retry-After", "60")
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error":       "rate limit exceeded",
+				"retry_after": 60,
+			})
+			c.Abort()
+			return
+		}
+
+		client.requests = append(client.requests, now)
+		c.Next()
+	}
 }
 
 func (rl *RateLimiter) cleanup() {
@@ -36,62 +86,25 @@ func (rl *RateLimiter) cleanup() {
 	defer ticker.Stop()
 
 	for range ticker.C {
-		rl.mu.Lock()
-		for ip, client := range rl.clients {
+		now := time.Now()
+		rl.clients.Range(func(key, val any) bool {
+			client := val.(*clientLimiter)
+
 			client.mu.Lock()
-			now := time.Now()
-			validRequests := 0
-			for _, reqTime := range client.requests {
-				if now.Sub(reqTime) < rl.window {
-					validRequests++
+			valid := client.requests[:0]
+			for _, t := range client.requests {
+				if now.Sub(t) < rl.window {
+					valid = append(valid, t)
 				}
 			}
-			if validRequests == 0 {
-				delete(rl.clients, ip)
-			} else {
-				client.requests = client.requests[len(client.requests)-validRequests:]
-			}
+			client.requests = valid
+			empty := len(client.requests) == 0
 			client.mu.Unlock()
-		}
-		rl.mu.Unlock()
-	}
-}
 
-func (rl *RateLimiter) Middleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		clientIP := c.ClientIP()
-
-		rl.mu.Lock()
-		client, exists := rl.clients[clientIP]
-		if !exists {
-			client = &clientLimiter{
-				requests: make([]time.Time, 0),
+			if empty {
+				rl.clients.Delete(key)
 			}
-			rl.clients[clientIP] = client
-		}
-		rl.mu.Unlock()
-
-		client.mu.Lock()
-		now := time.Now()
-		validRequests := 0
-		for _, reqTime := range client.requests {
-			if now.Sub(reqTime) < rl.window {
-				validRequests++
-			}
-		}
-
-		if validRequests >= rl.maxRequests {
-			client.mu.Unlock()
-			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error": "rate limit exceeded",
-			})
-			c.Abort()
-			return
-		}
-
-		client.requests = append(client.requests, now)
-		client.mu.Unlock()
-
-		c.Next()
+			return true
+		})
 	}
 }
