@@ -19,7 +19,6 @@ func RunMigrations(db *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("failed to create migration driver: %w", err)
 	}
-	defer driver.Close()
 
 	source, err := iofs.New(migrationsFS, "migrations")
 	if err != nil {

@@ -85,6 +85,10 @@ func main() {
 		router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 	}
 
+	router.GET("/admin", func(c *gin.Context) {
+		c.HTML(200, "adminpanel.html", gin.H{})
+	})
+
 	// Métricas protegidas por IP local apenas
 	router.GET("/metrics", func(c *gin.Context) {
 		ip := c.ClientIP()
