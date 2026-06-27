@@ -26,44 +26,44 @@ const (
 
 // OrderItem represents a single item in an order
 type OrderItem struct {
-	ID        int     `json:"id"`
-	OrderID   int     `json:"order_id"`
-	ProductID int     `json:"product_id"`
-	Quantity  int     `json:"quantity"`
-	UnitPrice float64 `json:"unit_price"`
+	ID        int       `json:"id"`
+	OrderID   int       `json:"order_id"`
+	ProductID int       `json:"product_id"`
+	Quantity  int       `json:"quantity"`
+	UnitPrice float64   `json:"unit_price"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
 // OrderDetail represents an order with all details
 type OrderDetail struct {
-	ID                 int          `json:"id"`
-	UserID             int          `json:"user_id"`
-	Items              []OrderItem  `json:"items"`
-	TotalPrice         float64      `json:"total_price"`
-	Status             OrderStatus  `json:"status"`
-	PaymentIntentID    string       `json:"payment_intent_id,omitempty"`
-	PaymentStatus      PaymentStatus `json:"payment_status,omitempty"`
-	CreatedAt          time.Time    `json:"created_at"`
-	UpdatedAt          time.Time    `json:"updated_at"`
+	ID              int           `json:"id"`
+	UserID          int           `json:"user_id"`
+	Items           []OrderItem   `json:"items"`
+	TotalPrice      float64       `json:"total_price"`
+	Status          OrderStatus   `json:"status"`
+	PaymentIntentID string        `json:"payment_intent_id,omitempty"`
+	PaymentStatus   PaymentStatus `json:"payment_status,omitempty"`
+	CreatedAt       time.Time     `json:"created_at"`
+	UpdatedAt       time.Time     `json:"updated_at"`
 }
 
 // PaymentRecord represents a payment transaction in the database
 type PaymentRecord struct {
-	ID                int           `json:"id"`
-	OrderID           int           `json:"order_id"`
-	PaymentIntentID   string        `json:"payment_intent_id"`
-	Amount            int           `json:"amount"` // in cents (centavos)
-	Currency          string        `json:"currency"`
-	Status            PaymentStatus `json:"status"`
-	StripeCustomerID  string        `json:"stripe_customer_id,omitempty"`
-	ErrorMessage      string        `json:"error_message,omitempty"`
-	CreatedAt         time.Time     `json:"created_at"`
-	UpdatedAt         time.Time     `json:"updated_at"`
+	ID               int           `json:"id"`
+	OrderID          int           `json:"order_id"`
+	PaymentIntentID  string        `json:"payment_intent_id"`
+	Amount           int           `json:"amount"` // in cents (centavos)
+	Currency         string        `json:"currency"`
+	Status           PaymentStatus `json:"status"`
+	StripeCustomerID string        `json:"stripe_customer_id,omitempty"`
+	ErrorMessage     string        `json:"error_message,omitempty"`
+	CreatedAt        time.Time     `json:"created_at"`
+	UpdatedAt        time.Time     `json:"updated_at"`
 }
 
 // CheckoutRequest represents the request to create a checkout
 type CheckoutRequest struct {
-	UserEmail  string              `json:"user_email" binding:"required,email"`
+	UserEmail  string              `json:"user_email"`
 	Items      []CheckoutItemInput `json:"items" binding:"required,min=1"`
 	SuccessURL string              `json:"success_url,omitempty"`
 	CancelURL  string              `json:"cancel_url,omitempty"`

@@ -209,6 +209,7 @@ async function checkout() {
     // Cria payment intent no backend
     const res = await fetch(`${API_BASE}/checkout`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         items,
         user_email: '' // backend pega do JWT futuramente
