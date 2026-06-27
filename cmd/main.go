@@ -167,6 +167,11 @@ func main() {
 	// Rotas públicas
 	public := router.Group("/api")
 	{
+		public.GET("/config", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"publishable_key": config.GetStripePublishableKey(),
+			})
+		})
 		public.POST("/signup", authLimiter.Middleware(), authController.Signup)
 		public.POST("/login", authLimiter.Middleware(), authController.Login)
 		public.POST("/refresh", refreshLimiter.Middleware(), authController.RefreshToken)
@@ -174,6 +179,13 @@ func main() {
 		public.GET("/health", healthController.Health)
 		public.POST("/webhook", paymentController.Webhook)
 	}
+
+	router.GET("/checkout", func(c *gin.Context) {
+		c.HTML(200, "checkout.html", gin.H{})
+	})
+	router.GET("/order/success", func(c *gin.Context) {
+		c.HTML(200, "order-success.html", gin.H{})
+	})
 
 	// Rotas protegidas
 	protected := router.Group("/api")

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pagamento — VOLURYA</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Russo+One&display=swap">
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="bg-dark text-light">
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand text-danger fw-bold" href="/" style="font-family: 'Russo One', sans-serif;">
+        VOLURYA
+      </a>
+      <a href="/cart" class="btn btn-outline-danger btn-sm">Voltar ao Carrinho</a>
+    </div>
+  </nav>
+
+  <div class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-md-6">
+
+        <h2 class="text-danger mb-4 text-center" style="font-family: 'Russo One', sans-serif;">
+          PAGAMENTO
+        </h2>
+
+        <!-- Resumo do pedido -->
+        <div class="card bg-secondary border-0 mb-4">
+          <div class="card-body">
+            <div class="d-flex justify-content-between">
+              <span class="text-light">Pedido #<span id="order-id">-</span></span>
+              <span class="text-danger fw-bold fs-5" id="order-total">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Formulário Stripe -->
+        <div class="card bg-dark border-danger">
+          <div class="card-body p-4">
+            <div id="payment-element" class="mb-4">
+              <!-- Stripe.js injeta o formulário aqui -->
+            </div>
+
+            <div id="payment-message" class="text-danger mb-3 d-none"></div>
+
+            <button id="pay-btn" class="btn btn-danger w-100 py-2 fw-bold">
+              PAGAR AGORA
+            </button>
+          </div>
+        </div>
+
+        <p class="text-muted text-center mt-3 small">
+          <i class="fa fa-lock"></i> Pagamento seguro via Stripe
+        </p>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://js.stripe.com/v3/"></script>
+  <script src="/static/js/auth.js"></script>
+  <script>
+    // Redireciona se não estiver logado
+    isLoggedIn().then(loggedIn => {
+      if (!loggedIn) window.location.href = '/login';
+    });
+
+    // Recupera dados do checkout da sessionStorage
+    const checkoutData = JSON.parse(sessionStorage.getItem('checkout_data') || 'null');
+    if (!checkoutData) {
+      window.location.href = '/cart';
+    }
+
+    // Exibe resumo
+    document.getElementById('order-id').textContent = checkoutData.order_id;
+    document.getElementById('order-total').textContent =
+      (checkoutData.amount / 100).toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      });
+
+    let stripe, elements;
+
+    // Busca publishable key e inicializa Stripe
+    async function initStripe() {
+      const res = await fetch(`${API_BASE}/config`);
+      const { publishable_key } = await res.json();
+
+      stripe = Stripe(publishable_key);
+
+      elements = stripe.elements({
+        clientSecret: checkoutData.client_secret,
+        appearance: {
+          theme: 'night',
+          variables: {
+            colorPrimary: '#dc3545',
+            colorBackground: '#212529',
+            colorText: '#ffffff',
+          }
+        }
+      });
+
+      const paymentElement = elements.create('payment');
+      paymentElement.mount('#payment-element');
+    }
+
+    initStripe().catch(() => {
+      showMessage('Erro ao carregar formulário de pagamento. Tente novamente.');
+    });
+
+    // Confirma pagamento
+    document.getElementById('pay-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('pay-btn');
+      btn.disabled = true;
+      btn.textContent = 'Processando...';
+
+      const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/order/success?order_id=${checkoutData.order_id}`
+        }
+      });
+
+      // Se chegou aqui, houve erro — sucesso redireciona automaticamente
+      if (error) {
+        showMessage(error.message || 'Erro ao processar pagamento');
+        btn.disabled = false;
+        btn.textContent = 'PAGAR AGORA';
+      }
+    });
+
+    function showMessage(msg) {
+      const el = document.getElementById('payment-message');
+      el.textContent = msg;
+      el.classList.remove('d-none');
+    }
+  </script>
+</body>
+</html>

@@ -63,12 +63,11 @@ func (pc *PaymentController) Checkout(c *gin.Context) {
 	amountInCents := int64(math.Round(orderDetail.TotalPrice * 100))
 
 	params := &stripe.PaymentIntentParams{
-		Amount:              stripe.Int64(amountInCents),
-		Currency:            stripe.String("brl"),
-		Description:         stripe.String("Volurya Order #" + strconv.Itoa(orderDetail.ID)),
-		StatementDescriptor: stripe.String("VOLURYA SHOP"),
+		Amount:                    stripe.Int64(amountInCents),
+		Currency:                  stripe.String("brl"),
+		Description:               stripe.String("Volurya Order #" + strconv.Itoa(orderDetail.ID)),
+		StatementDescriptorSuffix: stripe.String("VOLURYA"),
 	}
-
 	// Adicionar email apenas se fornecido
 	if req.UserEmail != "" {
 		params.ReceiptEmail = stripe.String(req.UserEmail)

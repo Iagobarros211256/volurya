@@ -189,19 +189,51 @@ async function checkout() {
   btn.textContent = 'Processando...';
 
   try {
-    const res = await fetch(`${API_BASE}/cart/checkout`, {
-      method: 'POST'
+    // Busca email do usuário para o recibo Stripe
+    const cartRes = await fetch(`${API_BASE}/cart`);
+    const cart = await cartRes.json();
+
+    // Monta lista de itens do carrinho
+    const items = (cart.items || []).map(item => ({
+      product_id: item.product_id,
+      quantity: item.quantity
+    }));
+
+    if (items.length === 0) {
+      showToast('Carrinho vazio', 'danger');
+      btn.disabled = false;
+      btn.textContent = 'FINALIZAR COMPRA';
+      return;
+    }
+
+    // Cria payment intent no backend
+    const res = await fetch(`${API_BASE}/checkout`, {
+      method: 'POST',
+      body: JSON.stringify({
+        items,
+        user_email: '' // backend pega do JWT futuramente
+      })
     });
 
     const data = await res.json();
 
-    if (res.ok && data.payment_urls && data.payment_urls.length > 0) {
-      window.location.href = data.payment_urls[0];
-    } else {
+    if (!res.ok) {
       showToast(data.error || 'Erro no checkout', 'danger');
       btn.disabled = false;
       btn.textContent = 'FINALIZAR COMPRA';
+      return;
     }
+
+    // Redireciona para página de checkout com Stripe.js
+    sessionStorage.setItem('checkout_data', JSON.stringify({
+      client_secret: data.client_secret,
+      order_id: data.order_id,
+      amount: data.amount,
+      currency: data.currency
+    }));
+
+    window.location.href = '/checkout';
+
   } catch {
     showToast('Erro de conexão', 'danger');
     btn.disabled = false;
