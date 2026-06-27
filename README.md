@@ -101,7 +101,7 @@ GRAFANA_ADMIN_PASSWORD=your_grafana_password
 Start services:
 
 ```bash
-docker compose up --build -d
+docker compose -f local/docker-compose.yml up --build -d
 ```
 
 API available at: http://localhost:8080
@@ -109,7 +109,7 @@ API available at: http://localhost:8080
 Stop everything:
 
 ```bash
-docker compose down -v
+docker compose -f local/docker-compose.yml down -v
 ```
 
 ## 🗄️ Database Access (Local)
@@ -204,7 +204,7 @@ curl -X GET https://volurya.onrender.com/api/products \
 Start isolated test database:
 
 ```bash
-docker compose -f docker-compose.test.yml up -d
+docker compose -f local/docker-compose.test.yml up -d
 ```
 
 Run all tests:
@@ -410,7 +410,7 @@ GRAFANA_ADMIN_PASSWORD=sua_senha_grafana
 Suba os containers:
 
 ```bash
-docker compose up --build -d
+docker compose -f local/docker-compose.yml up --build -d
 ```
 
 API disponível em: http://localhost:8080
@@ -418,7 +418,7 @@ API disponível em: http://localhost:8080
 Parar tudo:
 
 ```bash
-docker compose down -v
+docker compose -f local/docker-compose.yml down -v
 ```
 
 ## 🗄️ Acessando o Banco (Local)
@@ -508,7 +508,7 @@ curl -X GET https://volurya.onrender.com/api/products \
 ## 🧪 Testes
 
 ```bash
-docker compose -f docker-compose.test.yml up -d
+docker compose -f local/docker-compose.test.yml up -d
 go test ./... -v
 go test ./... -coverprofile=cover.out && go tool cover -html=cover.out
 ```
