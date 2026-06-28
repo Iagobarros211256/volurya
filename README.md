@@ -5,45 +5,38 @@ Backend API in Go for managing band-related products (t-shirts, caps, socks, dru
 
 Personal learning project / showcase built to practice real-world backend concepts.
 
-![Badge](https://img.shields.io/badge/Go-1.23-blue?logo=go&logoColor=white)
+![Badge](https://img.shields.io/badge/Go-1.24-blue?logo=go&logoColor=white)
 ![Badge](https://img.shields.io/badge/Gin-1.10-green)
 ![Badge](https://img.shields.io/badge/PostgreSQL-16-blue)
 ![Badge](https://img.shields.io/badge/Docker-Ready-blue)
 ![Badge](https://img.shields.io/badge/JWT-Authentication-blue)
 ![Badge](https://img.shields.io/badge/Stripe-Payments-blue?logo=stripe&logoColor=white)
 ![Badge](https://img.shields.io/badge/Deploy-Render-success?logo=render&logoColor=white)
+![Badge](https://img.shields.io/badge/CI-GitHub_Actions-success?logo=githubactions&logoColor=white)
 
-# Documentação Volurya API
-
-## Visão Geral
+## 📚 Documentação
 
 - **[PRD](./docs/volurya-prd.md)** — Requisitos de produto e escopo
 - **[Tech Spec](./docs/volurya-tech-spec.md)** — Arquitetura técnica e decisões
+- **[Docs Index](./docs/index.md)** — Índice completo da documentação
 - **[ADRs](./docs/architecture/)** — Architecture Decision Records
-
-## ADRs
-
-- [ADR 001 — Clean Architecture](./docs/architecture/adr-001-clean-architecture.md)
-- [ADR 002 — JWT com Refresh Token Rotation](./docs/architecture/adr-002-jwt-refresh-rotation.md)
-- [ADR 003 — Cloudflare R2 para Storage](./docs/architecture/adr-003-cloudflare-r2.md)
 
 ## 🎯 Project Goals
 
 - Practice **Clean Architecture** (simplified)
-- Implement secure **JWT authentication** (bcrypt + refresh token rotation)
+- Implement secure **JWT authentication** (bcrypt + HttpOnly cookies + refresh token rotation)
 - Work with real **PostgreSQL** (even in tests)
 - Build proper **unit + integration tests**
 - Standardize environment with **Docker**
 - Create a clean, explainable showcase project
-- **Security hardening** (email validation, rate limiting, CSRF protection, webhook validation)
-- **Full API documentation** (Swagger/OpenAPI)
-- **Enterprise-ready features** (health checks, request tracing, monitoring)
+- **Security hardening** (XSS prevention, rate limiting, CSRF, webhook validation, HttpOnly cookies)
+- **Full payment flow** (Stripe Payment Element, webhook, order confirmation)
+- **Enterprise-ready features** (health checks, request tracing, monitoring, CI pipeline)
 
 ## 🌐 Live API (Render)
 
 - Base URL: https://volurya.onrender.com
 - Health check: https://volurya.onrender.com/ping → `{"message": "pong"}`
-- **Swagger UI**: https://volurya.onrender.com/swagger/index.html (development only)
 
 **Note**: Render free tier has cold starts — first request after ~15 min inactivity may take 10–30 seconds.
 
@@ -65,7 +58,7 @@ git clone https://github.com/Iagobarros211256/volurya.git
 cd volurya
 ```
 
-Create a `.env` file in the root (see `.env.example`):
+Create a `.env` file in the root:
 
 ```env
 APP_ENV=development
@@ -81,6 +74,7 @@ POSTGRES_PASSWORD=your_postgres_password
 POSTGRES_DB=volurya_db
 
 STRIPE_SECRET_KEY=sk_test_your_key_here
+STRIPE_PUBLISHABLE_KEY=pk_test_your_key_here
 STRIPE_WEBHOOK_SECRET=whsec_your_secret_here
 
 R2_ACCESS_KEY_ID=your_r2_key
@@ -96,7 +90,7 @@ GRAFANA_ADMIN_USER=admin
 GRAFANA_ADMIN_PASSWORD=your_grafana_password
 ```
 
-`BOOTSTRAP_ADMIN_EMAIL` e `BOOTSTRAP_ADMIN_PASSWORD` são opcionais. Quando definidos, a API cria ou atualiza esse usuário com `role=admin` no startup.
+`BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` are optional. When set, the API creates or updates that user with `role=admin` on startup.
 
 Start services:
 
@@ -120,199 +114,251 @@ docker exec -it volurya_postgres psql -U volurya -d volurya_db
 
 Tables are created automatically by migrations on startup. No manual SQL commands needed.
 
-Quick checks:
-
 ```sql
 \dt                      -- list tables
-SELECT * FROM users;     -- see users
+SELECT * FROM users;
 SELECT * FROM products;
+SELECT * FROM orders;
 SELECT * FROM order_items;
 ```
 
-## 🔐 Authentication Flow (JWT)
+## 🔐 Authentication Flow (JWT + HttpOnly Cookies)
 
-Signup or Login return two tokens:
-- `access_token` — short-lived (15 min), used on protected routes
-- `refresh_token` — long-lived (7 days), used to renew the access_token
-
-**Signup:**
+Login and Signup set tokens as **HttpOnly cookies** — JavaScript cannot access them, protecting against XSS.
 
 ```bash
-curl -X POST https://volurya.onrender.com/api/signup \
+# Login
+curl -c /tmp/cookies.txt -X POST https://volurya.onrender.com/api/login \
   -H "Content-Type: application/json" \
   -d '{"email": "fan@volurya.com", "password": "senhaSegura123"}'
+
+# Protected route — cookie sent automatically
+curl -b /tmp/cookies.txt https://volurya.onrender.com/api/products
+
+# Check auth status
+curl -b /tmp/cookies.txt https://volurya.onrender.com/api/auth/me
+
+# Logout — revokes refresh token
+curl -b /tmp/cookies.txt -X POST https://volurya.onrender.com/api/logout
 ```
 
-**Login:**
+## 💳 Payment Flow (Stripe)
+User adds items to cart
 
-```bash
-curl -X POST https://volurya.onrender.com/api/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "fan@volurya.com", "password": "senhaSegura123"}'
-```
+↓
 
-**Refresh (when access_token expires):**
+POST /api/checkout → creates order + Stripe PaymentIntent
 
-```bash
-curl -X POST https://volurya.onrender.com/api/refresh \
-  -H "Content-Type: application/json" \
-  -d '{"refresh_token": "YOUR_REFRESH_TOKEN"}'
-```
+↓
 
-**Logout (revokes refresh_token):**
+Frontend receives client_secret → Stripe.js Payment Element
 
-```bash
-curl -X POST https://volurya.onrender.com/api/logout \
-  -H "Content-Type: application/json" \
-  -d '{"refresh_token": "YOUR_REFRESH_TOKEN"}'
-```
+↓
 
-**Protected route example:**
+User completes payment on /checkout page
 
-```bash
-curl -X GET https://volurya.onrender.com/api/products \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
-```
+↓
+
+Stripe sends webhook → POST /api/webhook (HMAC signature validated)
+
+↓
+
+Order status updated → paid
+
+↓
+
+User redirected to /order/success
 
 ## 🔌 Main Endpoints
 
 | Method | Endpoint | Description | Auth? |
 |--------|----------|-------------|-------|
 | POST | /api/signup | Create user (role: user) | No |
-| POST | /api/login | Generate JWT tokens | No |
-| POST | /api/refresh | Generate new token pair via refresh_token | No |
-| POST | /api/logout | Revoke refresh_token | No |
-| GET | /api/health | Healthcheck with DB status (200/503) | No |
-| POST | /api/webhook | Stripe webhook (signature validated) | No |
+| POST | /api/login | Set HttpOnly auth cookies | No |
+| POST | /api/refresh | Renew tokens via cookie | No |
+| POST | /api/logout | Revoke refresh token + clear cookies | No |
+| GET | /api/auth/me | Check auth status | Yes |
+| GET | /api/health | Healthcheck with DB status | No |
+| GET | /api/config | Stripe publishable key | No |
+| POST | /api/webhook | Stripe webhook (HMAC validated) | No |
 | GET | /api/products | List products (cursor pagination) | Yes |
 | POST | /api/products | Create product (admin only) | Yes |
-| GET | /api/products/:productId | Get product by ID | Yes |
-| PUT | /api/products/:productId | Update product (admin only) | Yes |
-| DELETE | /api/products/:productId | Delete product (admin only) | Yes |
-| POST | /api/checkout | Create Stripe payment intent | Yes |
+| GET | /api/products/:id | Get product by ID | Yes |
+| PUT | /api/products/:id | Update product (admin only) | Yes |
+| DELETE | /api/products/:id | Delete product (admin only) | Yes |
+| POST | /api/checkout | Create Stripe PaymentIntent | Yes |
 | GET | /api/cart | View cart | Yes |
 | POST | /api/cart/items | Add item to cart | Yes |
-| PUT | /api/cart/items/:itemId | Update item quantity | Yes |
-| DELETE | /api/cart/items/:itemId | Remove item | Yes |
-| POST | /api/cart/checkout | Checkout cart | Yes |
+| PUT | /api/cart/items/:id | Update item quantity | Yes |
+| DELETE | /api/cart/items/:id | Remove item | Yes |
 | GET | /api/events | SSE real-time notifications | Yes |
 | GET | /ping | Simple healthcheck | No |
-| GET | /swagger/\*any | Swagger UI (dev only) | No |
 
 ## 🧪 Tests
 
-Start isolated test database:
-
 ```bash
+# Unit tests (no external dependencies)
+JWT_SECRET=test_secret go test ./middleware/... -v
+
+# Integration tests (requires test DB on port 5433)
 docker compose -f local/docker-compose.test.yml up -d
-```
-
-Run all tests:
-
-```bash
 go test ./... -v
-```
 
-Coverage report:
-
-```bash
-go test ./... -coverprofile=cover.out
+# Coverage
+go test ./middleware/... -coverprofile=cover.out
 go tool cover -html=cover.out
 ```
+
+CI runs on every push and PR via GitHub Actions — see `.github/workflows/ci.yml`.
+
+## 📁 Repository Structure
+.github/workflows/   # CI/CD — GitHub Actions
+
+cmd/                 # Application entrypoint
+
+config/              # Configuration (Stripe, env vars)
+
+controller/          # HTTP handlers
+
+db/                  # Migrations (embedded via go:embed)
+
+docs/                # PRD, Tech Spec, ADRs
+
+local/               # Local dev resources (docker-compose, prometheus)
+
+middleware/          # JWT auth, rate limiting, CORS, CSRF, logging
+
+models/              # Domain entities
+
+repository/          # Database access layer
+
+usecase/             # Business logic
+
+views/               # HTML templates + static assets
 
 ## 🛠️ Architectural Decisions
 
 - Simplified Clean Architecture
-- JWT authentication with refresh token rotation
-- Token duration configurable via environment variables
-- Automatic migrations with golang-migrate
-- Stripe for payments (webhook with signature validation)
-- Cloudflare R2 for image storage
-- Docker as standard environment
+- JWT with HttpOnly cookies — tokens inaccessible to JavaScript
+- Refresh token rotation and revocation in database
+- Stripe Payment Element for checkout (PCI compliant)
+- Webhook HMAC signature validation — prevents fraudulent payment confirmations
+- Atomic stock decrement — `WHERE stock >= quantity` prevents overselling
+- Migrations embedded in binary via `go:embed` — no filesystem dependencies
+- Cloudflare R2 for image storage — no egress fees
+- Async image processing via worker pool
 - Prometheus + Grafana for monitoring
 - SSE for real-time notifications
 
-## ❄️ Status Atual
+## ❄️ Status
 
-Backend em desenvolvimento ativo.
+Active development — hardened and working end-to-end payment flow.
 
-### ✅ Semana 0 — Infraestrutura e correções críticas
-- [x] Credenciais removidas do docker-compose.yml
-- [x] Bug de compilação do main.go corrigido
-- [x] Swagger desabilitado em produção
-- [x] /metrics protegido por IP
-- [x] log.Fatalf substituído por slog
-- [x] Shutdown timeout aumentado para 15s
-- [x] Prometheus coletando métricas corretamente
+### ✅ Semana 0 — Infrastructure
+- [x] Credentials removed from docker-compose.yml
+- [x] main.go compilation bug fixed
+- [x] Swagger disabled in production
+- [x] /metrics protected by IP
+- [x] log.Fatalf replaced with slog
+- [x] Graceful shutdown timeout 15s
+- [x] Prometheus scraping fixed
 
-### ✅ Semana 1 — Segurança financeira
-- [x] Webhook Stripe com validação real de assinatura
-- [x] PagSeguro removido completamente
-- [x] order_items persistidos no banco
-- [x] Estoque decrementado atomicamente (race condition protegida)
-- [x] CancelOrder para compensação de ordens órfãs
-- [x] HandlePaymentSuccess/Failed idempotentes
-- [x] JWT revalidado manualmente removido do checkout
-- [x] math.Round para conversão de centavos
+### ✅ Semana 1 — Financial security
+- [x] Stripe webhook with real HMAC signature validation
+- [x] PagSeguro removed completely
+- [x] order_items persisted in database
+- [x] Atomic stock decrement (race condition protected)
+- [x] CancelOrder for orphan order compensation
+- [x] HandlePaymentSuccess/Failed idempotent
 
-### 🔜 Semana 2 — Segurança geral
-- [ ] Tokens em cookies HttpOnly (XSS protection)
-- [ ] innerHTML → textContent no frontend (XSS prevention)
-- [ ] Interfaces nos usecases e repositories
-- [ ] Race condition e deadlock no rate limiter
-- [ ] request_id.go e logger.go unificados
+### ✅ Semana 2 — General security
+- [x] Tokens migrated to HttpOnly cookies
+- [x] innerHTML → textContent in all JS (XSS prevention)
+- [x] /api/auth/me endpoint
+- [x] JWT middleware reads cookie first, Authorization header as fallback
+- [x] Token removed from SSE query string
+- [x] Automatic token refresh on 401
+- [x] Rate limiter: sync.Map eliminates race condition and deadlock
+- [x] request_id.go and logger.go unified with UUID
 
-### 🔜 Semana 3 — Qualidade
-- [ ] go:embed para migrations
-- [ ] Testes reais nos controllers e usecases
-- [ ] Dois painéis admin unificados
-- [ ] image_url real na store
+### ✅ Semana 3 — Quality
+- [x] go:embed for migrations — no filesystem dependency
+- [x] Dockerfile upgraded to golang:1.24-alpine with HEALTHCHECK
+- [x] Admin panels unified (storeadmin.html deleted)
+- [x] image_url from API used in store (was hardcoded)
 
-## 🔒 Segurança
+### ✅ Semana 4 — Complete Stripe payment flow
+- [x] GET /api/config returns publishable key
+- [x] checkout.html with Stripe.js Payment Element (night theme)
+- [x] order-success.html with payment status verification
+- [x] Migration 000010: drop NOT NULL from legacy orders columns
+- [x] StatementDescriptor → StatementDescriptorSuffix fix
+- [x] End-to-end payment tested with real Stripe test keys
 
-- [x] Rate limiting nas rotas públicas (signup, login, refresh)
-- [x] CORS configurado por ambiente
+### ✅ Semana 5 — Repository reorganization
+- [x] docker-compose.yml moved to local/
+- [x] prometheus.yml moved to local/
+- [x] MOBILE_TESTING_GUIDE.md moved to docs/
+- [x] docs/index.md created
+- [x] .github/workflows/ directory created
+- [x] Compiled binary removed from repo and added to .gitignore
+- [x] README updated with new paths
+
+### ✅ Semana 6 — CI/CD
+- [x] GitHub Actions pipeline on push and PR to main
+- [x] Build validation in CI
+- [x] Unit tests running in CI (middleware)
+- [x] Coverage report generated
+
+## 🔒 Security
+
+- [x] HttpOnly cookies — tokens inaccessible to JavaScript
+- [x] XSS prevention — no innerHTML with API data
+- [x] Rate limiting on public routes
+- [x] CORS configured per environment
 - [x] Email validation (RFC 5321)
 - [x] Password validation (8-128 chars)
 - [x] CSRF protection middleware
-- [x] HTTPS redirect em produção
-- [x] Stripe webhook signature validation
-- [x] /metrics protegido por IP
-- [x] Swagger desabilitado em produção
-- [ ] Tokens em cookies HttpOnly
+- [x] Stripe webhook HMAC validation
+- [x] /metrics restricted by IP
+- [x] Swagger disabled in production
 - [ ] Helmet headers
+- [ ] CSRF protection for JSON requests (currently bypassed)
 
-## 📊 Observabilidade
+## 📊 Observability
 
-- [x] Logs estruturados com slog (JSON em produção)
-- [x] Request ID por requisição (UUID)
-- [x] Métricas com Prometheus (/metrics — acesso restrito)
-- [x] Grafana para visualização
-- [x] Health check com status do banco (200/503)
+- [x] Structured logs with slog (JSON in production)
+- [x] UUID request ID per request
+- [x] Prometheus metrics (/metrics — IP restricted)
+- [x] Grafana dashboards
+- [x] Health check with DB status
+- [x] GitHub Actions CI
 
-### 🔧 Concorrência e Performance (Go avançado)
+## 🔧 Concurrency & Performance
 
-- [x] Worker pool para processamento de imagens (goroutines + channels)
-- [x] Pipeline assíncrono (validar → redimensionar → comprimir → salvar no R2)
-- [x] SSE (Server-Sent Events) para notificações em tempo real
-
-### 💡 Por que essas features?
-
-Essas três implementações foram escolhidas para demonstrar o que Go faz melhor:
-- **Worker pool** — controle fino de concorrência com goroutines e channels
-- **Pipeline** — padrão produtor/consumidor encadeado, idiomático em Go
-- **SSE** — Go lida naturalmente com milhares de conexões longas e concorrentes
+- [x] Worker pool for image processing (goroutines + channels)
+- [x] Async pipeline (validate → resize → compress → upload to R2)
+- [x] SSE (Server-Sent Events) for real-time notifications
+- [x] sync.Map in rate limiter — no mutex contention
 
 ## 🧠 Quick Mental Model
-Signup/Login  → access_token (15min) + refresh_token (7 days)
-access_token  → sent in Authorization: Bearer ...
-Middleware    → validates token and injects user_id
+Signup/Login  → HttpOnly cookies (access 15min + refresh 7 days)
+
+Cookie        → sent automatically by browser on every request
+
+Middleware    → reads cookie → validates JWT → injects user_id
+
 UseCase       → business rules
+
 Repository    → database
-refresh_token → used in /api/refresh to renew access_token
-logout        → revokes refresh_token in the database
-Stripe        → payment intent created on checkout
-webhook validates signature → updates order status
+
+401           → tryRefreshToken() → new cookie pair or redirect to login
+
+Stripe        → PaymentIntent created on checkout
+
+client_secret → Stripe.js confirms payment
+
+webhook HMAC validated → order status → paid
 
 ## 📬 Contact
 
@@ -331,25 +377,26 @@ Backend em Go para gerenciar produtos da banda Volurya (camisetas, bonés, meias
 
 Projeto pessoal / laboratório de aprendizado para praticar conceitos reais de backend.
 
-![Badge](https://img.shields.io/badge/Go-1.23-blue?logo=go&logoColor=white)
+![Badge](https://img.shields.io/badge/Go-1.24-blue?logo=go&logoColor=white)
 ![Badge](https://img.shields.io/badge/Gin-1.10-green)
 ![Badge](https://img.shields.io/badge/PostgreSQL-16-blue)
 ![Badge](https://img.shields.io/badge/Docker-Pronto-blue)
 ![Badge](https://img.shields.io/badge/JWT-Autenticação-blue)
 ![Badge](https://img.shields.io/badge/Stripe-Pagamentos-blue?logo=stripe&logoColor=white)
 ![Badge](https://img.shields.io/badge/Deploy-Render-success?logo=render&logoColor=white)
+![Badge](https://img.shields.io/badge/CI-GitHub_Actions-success?logo=githubactions&logoColor=white)
 
 ## 🎯 Objetivos do Projeto
 
 - Praticar **Clean Architecture** simplificada
-- Implementar autenticação **JWT segura** (bcrypt + refresh token com rotação)
+- Implementar autenticação **JWT segura** (bcrypt + cookies HttpOnly + rotação de refresh token)
 - Trabalhar com **PostgreSQL real** (inclusive nos testes)
 - Fazer **testes reais** (unitários + integração)
 - Padronizar ambiente com **Docker**
 - Criar um projeto fácil de explicar e apresentar
-- **Hardening de segurança** (validação de email, rate limiting, validação de webhook)
-- **Documentação completa** (Swagger/OpenAPI)
-- **Features production-ready** (healthchecks, rastreamento, monitoring)
+- **Hardening de segurança** (XSS, rate limiting, CSRF, validação de webhook, cookies HttpOnly)
+- **Fluxo de pagamento completo** (Stripe Payment Element, webhook, confirmação de pedido)
+- **Features production-ready** (healthchecks, rastreamento, monitoring, CI pipeline)
 
 ## 🌐 API Online (Render)
 
@@ -363,7 +410,7 @@ Projeto pessoal / laboratório de aprendizado para praticar conceitos reais de b
 Camadas separadas (Clean Architecture simplificada):
 
 - **Controllers** → camada HTTP (Gin) — só entrada/saída
-- **UseCases** → regras de negócio + invariantes (ex: senha nunca em plain text)
+- **UseCases** → regras de negócio + invariantes
 - **Repositories** → acesso ao banco (PostgreSQL)
 - **Models** → entidades do domínio
 
@@ -376,7 +423,7 @@ git clone https://github.com/Iagobarros211256/volurya.git
 cd volurya
 ```
 
-Crie um arquivo `.env` na raiz (veja `.env.example`):
+Crie um arquivo `.env` na raiz:
 
 ```env
 APP_ENV=development
@@ -392,6 +439,7 @@ POSTGRES_PASSWORD=sua_senha_postgres
 POSTGRES_DB=volurya_db
 
 STRIPE_SECRET_KEY=sk_test_sua_chave
+STRIPE_PUBLISHABLE_KEY=pk_test_sua_chave
 STRIPE_WEBHOOK_SECRET=whsec_seu_secret
 
 R2_ACCESS_KEY_ID=sua_chave_r2
@@ -421,119 +469,125 @@ Parar tudo:
 docker compose -f local/docker-compose.yml down -v
 ```
 
-## 🗄️ Acessando o Banco (Local)
+## 🔐 Autenticação (JWT + Cookies HttpOnly)
+
+Login e Signup setam tokens como **cookies HttpOnly** — JavaScript não consegue acessá-los, protegendo contra XSS.
 
 ```bash
-docker exec -it volurya_postgres psql -U volurya -d volurya_db
-```
-
-As tabelas são criadas automaticamente pelas migrations ao iniciar a API.
-
-```sql
-\dt                        -- lista tabelas
-SELECT * FROM users;       -- ver usuários
-SELECT * FROM products;
-SELECT * FROM order_items; -- itens de cada pedido
-```
-
-## 🔐 Fluxo de Autenticação (JWT)
-
-Signup ou Login retornam dois tokens:
-- `access_token` — curto prazo (15 min), usado nas rotas protegidas
-- `refresh_token` — longo prazo (7 dias), usado para renovar o access_token
-
-**Cadastro:**
-
-```bash
-curl -X POST https://volurya.onrender.com/api/signup \
+# Login
+curl -c /tmp/cookies.txt -X POST http://localhost:8080/api/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "fan@volurya.com", "password": "senhaSegura123"}'
+  -d '{"email": "admin@volurya.com", "password": "sua_senha"}'
+
+# Rota protegida — cookie enviado automaticamente
+curl -b /tmp/cookies.txt http://localhost:8080/api/products
+
+# Verificar status de autenticação
+curl -b /tmp/cookies.txt http://localhost:8080/api/auth/me
+
+# Logout — revoga refresh token
+curl -b /tmp/cookies.txt -X POST http://localhost:8080/api/logout
 ```
 
-**Login:**
+## 💳 Fluxo de Pagamento (Stripe)
+Usuário adiciona itens ao carrinho
 
-```bash
-curl -X POST https://volurya.onrender.com/api/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "fan@volurya.com", "password": "senhaSegura123"}'
-```
+↓
 
-**Refresh:**
+POST /api/checkout → cria ordem + PaymentIntent no Stripe
 
-```bash
-curl -X POST https://volurya.onrender.com/api/refresh \
-  -H "Content-Type: application/json" \
-  -d '{"refresh_token": "SEU_REFRESH_TOKEN"}'
-```
+↓
 
-**Logout:**
+Frontend recebe client_secret → Stripe.js Payment Element
 
-```bash
-curl -X POST https://volurya.onrender.com/api/logout \
-  -H "Content-Type: application/json" \
-  -d '{"refresh_token": "SEU_REFRESH_TOKEN"}'
-```
+↓
 
-**Rota protegida:**
+Usuário completa pagamento na página /checkout
 
-```bash
-curl -X GET https://volurya.onrender.com/api/products \
-  -H "Authorization: Bearer SEU_ACCESS_TOKEN"
-```
+↓
+
+Stripe envia webhook → POST /api/webhook (assinatura HMAC validada)
+
+↓
+
+Status da ordem atualizado → paid
+
+↓
+
+Usuário redirecionado para /order/success
 
 ## 🔌 Principais Endpoints
 
 | Método | Endpoint | Descrição | Auth? |
 |--------|----------|-----------|-------|
-| POST | /api/signup | Cria usuário (role: user) | Não |
-| POST | /api/login | Gera tokens JWT | Não |
-| POST | /api/refresh | Renova tokens via refresh_token | Não |
-| POST | /api/logout | Revoga o refresh_token | Não |
+| POST | /api/signup | Cria usuário | Não |
+| POST | /api/login | Seta cookies HttpOnly | Não |
+| POST | /api/refresh | Renova tokens via cookie | Não |
+| POST | /api/logout | Revoga token + limpa cookies | Não |
+| GET | /api/auth/me | Verifica status de autenticação | Sim |
 | GET | /api/health | Healthcheck com status do BD | Não |
-| POST | /api/webhook | Webhook Stripe (assinatura validada) | Não |
+| GET | /api/config | Publishable key do Stripe | Não |
+| POST | /api/webhook | Webhook Stripe (HMAC validado) | Não |
 | GET | /api/products | Lista produtos (paginação por cursor) | Sim |
 | POST | /api/products | Cria produto (admin only) | Sim |
-| GET | /api/products/:productId | Busca produto por ID | Sim |
-| PUT | /api/products/:productId | Atualiza produto (admin only) | Sim |
-| DELETE | /api/products/:productId | Deleta produto (admin only) | Sim |
-| POST | /api/checkout | Cria payment intent no Stripe | Sim |
-| GET | /api/cart | Ver carrinho atual | Sim |
+| GET | /api/products/:id | Busca produto por ID | Sim |
+| PUT | /api/products/:id | Atualiza produto (admin only) | Sim |
+| DELETE | /api/products/:id | Deleta produto (admin only) | Sim |
+| POST | /api/checkout | Cria PaymentIntent no Stripe | Sim |
+| GET | /api/cart | Ver carrinho | Sim |
 | POST | /api/cart/items | Adicionar produto ao carrinho | Sim |
-| PUT | /api/cart/items/:itemId | Atualizar quantidade | Sim |
-| DELETE | /api/cart/items/:itemId | Remover item | Sim |
-| POST | /api/cart/checkout | Finalizar compra | Sim |
-| GET | /api/events | Stream SSE de notificações | Sim |
+| PUT | /api/cart/items/:id | Atualizar quantidade | Sim |
+| DELETE | /api/cart/items/:id | Remover item | Sim |
+| GET | /api/events | SSE notificações em tempo real | Sim |
 | GET | /ping | Healthcheck simples | Não |
 
 ## 🧪 Testes
 
 ```bash
+# Testes unitários (sem dependências externas)
+JWT_SECRET=test_secret go test ./middleware/... -v
+
+# Testes de integração (requer banco de teste na porta 5433)
 docker compose -f local/docker-compose.test.yml up -d
 go test ./... -v
-go test ./... -coverprofile=cover.out && go tool cover -html=cover.out
+
+# Coverage
+go test ./middleware/... -coverprofile=cover.out
+go tool cover -html=cover.out
 ```
+
+CI roda em todo push e PR via GitHub Actions — veja `.github/workflows/ci.yml`.
 
 ## 🛠️ Decisões de Arquitetura
 
 - Clean Architecture simplificada
-- Stripe para pagamentos com validação de webhook
-- Refresh token com rotação e revogação no banco
-- Duração dos tokens configurável via env
-- Migrations automáticas com golang-migrate
-- Cloudflare R2 para storage de imagens
-- Docker como ambiente padrão
+- JWT com cookies HttpOnly — tokens inacessíveis ao JavaScript
+- Stripe Payment Element para checkout (PCI compliant)
+- Validação HMAC do webhook — previne confirmações de pagamento fraudulentas
+- Decremento atômico de estoque — `WHERE stock >= quantity` previne overselling
+- Migrations embutidas no binário via `go:embed`
+- Cloudflare R2 para storage de imagens — sem taxa de egress
+- Worker pool para processamento assíncrono de imagens
 - Prometheus + Grafana para monitoring
 
 ## 🧠 Modelo Mental Rápido
-Signup/Login  → access_token (15min) + refresh_token (7 dias)
-access_token  → enviado no header Authorization: Bearer ...
-Middleware    → valida token e injeta user_id
+Login/Signup  → cookies HttpOnly (access 15min + refresh 7 dias)
+
+Cookie        → enviado automaticamente pelo browser
+
+Middleware    → lê cookie → valida JWT → injeta user_id
+
 UseCase       → regras de negócio
+
 Repository    → banco
-refresh_token → usado em /api/refresh para renovar o access_token
-logout        → revoga o refresh_token no banco
-Stripe        → payment intent criado no checkout
-webhook valida assinatura → atualiza status da ordem
+
+401           → tryRefreshToken() → novo cookie ou redirect para login
+
+Stripe        → PaymentIntent criado no checkout
+
+client_secret → Stripe.js confirma pagamento
+
+webhook HMAC validado → ordem → paid
 
 ## 📬 Contato
 
@@ -546,4 +600,5 @@ Feito com ❤️, raiva e muito café para aprender e mostrar como penso arquite
 
 - [PRD](./docs/volurya-prd.md) — Requisitos e visão de produto
 - [Tech Spec](./docs/volurya-tech-spec.md) — Arquitetura e decisões técnicas
+- [Docs Index](./docs/index.md) — Índice completo
 - [ADRs](./docs/architecture/) — Architecture Decision Records
