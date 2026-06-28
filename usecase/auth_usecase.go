@@ -16,10 +16,10 @@ import (
 
 type AuthUsecase struct {
 	userRepo         repository.UserRepositoryInterface
-	refreshTokenRepo *repository.RefreshTokenRepository
+	refreshTokenRepo repository.RefreshTokenRepositoryInterface
 }
 
-func NewAuthUsecase(userRepo repository.UserRepositoryInterface, refreshTokenRepo *repository.RefreshTokenRepository) *AuthUsecase {
+func NewAuthUsecase(userRepo repository.UserRepositoryInterface, refreshTokenRepo repository.RefreshTokenRepositoryInterface) *AuthUsecase {
 	return &AuthUsecase{
 		userRepo:         userRepo,
 		refreshTokenRepo: refreshTokenRepo,
@@ -155,10 +155,10 @@ func (a *AuthUsecase) Logout(refreshToken string) error {
 /*
 
 
- refreshTokenRepo *repository.RefreshTokenRepository concreto
+ refreshTokenRepo repository.RefreshTokenRepositoryInterface concreto
 gotype AuthUsecase struct {
     userRepo         repository.UserRepositoryInterface  // interface ✅
-    refreshTokenRepo *repository.RefreshTokenRepository  // concreto ❌
+    refreshTokenRepo repository.RefreshTokenRepositoryInterface  // concreto ❌
 }
 Assimetria clara — userRepo tem interface mas refreshTokenRepo não. É por isso que os testes instanciam o repository real. Defina a interface:
 gotype RefreshTokenRepository interface {
