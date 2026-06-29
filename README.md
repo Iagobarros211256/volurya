@@ -95,7 +95,7 @@ GRAFANA_ADMIN_PASSWORD=your_grafana_password
 Start services:
 
 ```bash
-docker compose -f local/docker-compose.yml up --build -d
+docker compose -f local/docker-compose.yml --env-file .env up --build -d
 ```
 
 API available at: http://localhost:8080
@@ -103,7 +103,7 @@ API available at: http://localhost:8080
 Stop everything:
 
 ```bash
-docker compose -f local/docker-compose.yml down -v
+docker compose -f local/docker-compose.yml --env-file .env down -v
 ```
 
 ## 🗄️ Database Access (Local)
@@ -458,7 +458,7 @@ GRAFANA_ADMIN_PASSWORD=sua_senha_grafana
 Suba os containers:
 
 ```bash
-docker compose -f local/docker-compose.yml up --build -d
+docker compose -f local/docker-compose.yml --env-file .env up --build -d
 ```
 
 API disponível em: http://localhost:8080
@@ -466,7 +466,7 @@ API disponível em: http://localhost:8080
 Parar tudo:
 
 ```bash
-docker compose -f local/docker-compose.yml down -v
+docker compose -f local/docker-compose.yml --env-file .env down -v
 ```
 
 ## 🔐 Autenticação (JWT + Cookies HttpOnly)
