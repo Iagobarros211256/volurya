@@ -56,6 +56,7 @@ func main() {
 	router.Use(middleware.CORS())
 	router.Use(middleware.CSRFProtection())
 	router.Use(middleware.CSRFTokenProvider())
+	router.Use(middleware.SecurityHeaders())
 
 	// Worker pool para processamento de imagens
 	imageProcessor := jobs.NewImageProcessor(4)
