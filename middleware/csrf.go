@@ -1,82 +1,115 @@
 package middleware
 
 import (
-	"crypto/sha256"
+	"crypto/rand"
 	"encoding/hex"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
 
-// CSRFToken generates and validates CSRF tokens
-// For simplicity, we use a basic token based on session + secret
-func CSRFProtection() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// Allow safe methods without CSRF check
-		if c.Request.Method == http.MethodGet || 
-		   c.Request.Method == http.MethodHead || 
-		   c.Request.Method == http.MethodOptions {
-			c.Next()
-			return
-		}
+const csrfCookieName = "csrf_token"
+const csrfHeaderName = "X-CSRF-Token"
 
-		// Only check CSRF for form submissions (not JSON APIs with Authorization header)
-		// JSON APIs should use Authorization header which is CSRF-safe
-		if c.ContentType() == "application/json" {
-			c.Next()
-			return
-		}
-
-		// For form submissions, verify CSRF token
-		token := c.PostForm("_csrf_token")
-		if token == "" {
-			token = c.GetHeader("X-CSRF-Token")
-		}
-
-		if token == "" {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": "CSRF token missing",
-			})
-			c.Abort()
-			return
-		}
-
-		// Validate token (basic validation - in production use session-based tokens)
-		if !isValidCSRFToken(token) {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": "CSRF token invalid",
-			})
-			c.Abort()
-			return
-		}
-
-		c.Next()
-	}
-}
-
-// GenerateCSRFToken generates a CSRF token
-func GenerateCSRFToken(sessionID string) string {
-	data := sessionID + "csrf_secret_key"
-	hash := sha256.Sum256([]byte(data))
-	return hex.EncodeToString(hash[:])
-}
-
-// isValidCSRFToken validates a CSRF token
-func isValidCSRFToken(token string) bool {
-	// Basic validation: check if token is hex string of correct length
-	if len(token) != 64 { // SHA256 hex length
-		return false
-	}
-	_, err := hex.DecodeString(token)
-	return err == nil
-}
-
-// CSRFTokenMiddleware adds CSRF token to context for templates
+// CSRFTokenProvider gera um token CSRF aleatório e seta como cookie legível por JS.
+// Deve ser aplicado antes do CSRFProtection.
 func CSRFTokenProvider() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Generate a token based on request
-		token := GenerateCSRFToken(c.ClientIP())
+		// Verifica se já existe cookie CSRF válido
+		if token, err := c.Cookie(csrfCookieName); err == nil && len(token) == 64 {
+			c.Set("csrf_token", token)
+			c.Next()
+			return
+		}
+
+		// Gera novo token aleatório
+		token, err := generateCSRFToken()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			c.Abort()
+			return
+		}
+
+		secure := os.Getenv("APP_ENV") == "production"
+
+		// Cookie NÃO é HttpOnly — JavaScript precisa ler para enviar no header
+		c.SetCookie(
+			csrfCookieName,
+			token,
+			3600,  // 1 hora
+			"/",
+			"",
+			secure,
+			false, // não HttpOnly
+		)
+
 		c.Set("csrf_token", token)
 		c.Next()
 	}
+}
+
+// CSRFProtection valida o token CSRF via Double Submit Cookie Pattern.
+// Rotas públicas de auth (login, signup) são isentas — usuário ainda não tem cookie.
+func CSRFProtection() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Métodos seguros não precisam de CSRF
+		if c.Request.Method == http.MethodGet ||
+			c.Request.Method == http.MethodHead ||
+			c.Request.Method == http.MethodOptions {
+			c.Next()
+			return
+		}
+
+		// Rotas isentas — usuário ainda não tem cookie CSRF
+		exemptPaths := map[string]bool{
+			"/api/login":   true,
+			"/api/signup":  true,
+			"/api/refresh": true,
+			"/api/webhook": true, // webhook do Stripe tem validação própria
+		}
+		if exemptPaths[c.FullPath()] {
+			c.Next()
+			return
+		}
+
+		// Lê token do cookie
+		cookieToken, err := c.Cookie(csrfCookieName)
+		if err != nil || cookieToken == "" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "csrf token missing"})
+			c.Abort()
+			return
+		}
+
+		// Lê token do header enviado pelo frontend
+		headerToken := c.GetHeader(csrfHeaderName)
+		if headerToken == "" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "csrf token missing"})
+			c.Abort()
+			return
+		}
+
+		// Compara os dois tokens — devem ser idênticos
+		if cookieToken != headerToken {
+			c.JSON(http.StatusForbidden, gin.H{"error": "csrf token invalid"})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
+func generateCSRFToken() (string, error) {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
+// GenerateCSRFToken mantido para compatibilidade
+func GenerateCSRFToken(sessionID string) string {
+	token, _ := generateCSRFToken()
+	return token
 }

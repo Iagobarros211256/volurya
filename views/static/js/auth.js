@@ -41,10 +41,26 @@ function showToast(message, type = 'success') {
 // Intercepta fetch para tratar 401
 // Com cookies HttpOnly, o browser envia o cookie automaticamente
 // Não precisamos mais adicionar Authorization header manualmente
+
+// Lê o token CSRF do cookie (não-HttpOnly — acessível por JS)
+function getCSRFToken() {
+  const match = document.cookie.match(/csrf_token=([^;]+)/);
+  return match ? match[1] : '';
+}
+
 const originalFetch = window.fetch;
 window.fetch = async (url, options = {}) => {
   // Garante que cookies são enviados em todas as requisições
   options.credentials = 'include';
+
+  // Adiciona header CSRF em requisições mutantes
+  const method = (options.method || 'GET').toUpperCase();
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+    options.headers = {
+      ...options.headers,
+      'X-CSRF-Token': getCSRFToken()
+    };
+  }
 
   // Adiciona Content-Type apenas se não for FormData
   if (!options.headers?.['Content-Type'] && !(options.body instanceof FormData)) {
