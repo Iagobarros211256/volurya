@@ -41,7 +41,7 @@ func (a *AuthUsecase) Signup(email, password string) (string, string, error) {
 		return "", "", err
 	}
 	if existing != nil {
-		return "", "", errors.New("email already registered")
+		return "", "", ErrEmailAlreadyExists
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -170,7 +170,7 @@ gotype RefreshTokenRepository interface {
 🔴 Signup verifica email duplicado com SELECT antes do INSERT — race condition
 goexisting, err := a.userRepo.GetByEmail(email)
 if existing != nil {
-    return "", "", errors.New("email already registered")
+    return "", "", ErrEmailAlreadyExists
 }
 // outro goroutine pode inserir aqui
 a.userRepo.Create(user)
@@ -178,7 +178,7 @@ Dois signups simultâneos com o mesmo email passam pelo check e ambos tentam o I
 goid, err := a.userRepo.Create(user)
 if err != nil {
     if errors.Is(err, repository.ErrEmailAlreadyRegistered) {
-        return "", "", errors.New("email already registered")
+        return "", "", ErrEmailAlreadyExists
     }
     return "", "", err
 }
