@@ -1,51 +1,34 @@
 package middleware
 
 import (
+	"encoding/hex"
 	"testing"
 )
 
-func TestGenerateCSRFToken(t *testing.T) {
-	sessionID := "session123"
-	token1 := GenerateCSRFToken(sessionID)
-	token2 := GenerateCSRFToken(sessionID)
-
-	if token1 != token2 {
-		t.Fatalf("same session should generate same token")
+func TestGenerateCSRFToken_Length(t *testing.T) {
+	token, err := generateCSRFToken()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-
-	if len(token1) != 64 {
-		t.Fatalf("token should be 64 chars (SHA256 hex), got %d", len(token1))
+	if len(token) != 64 {
+		t.Fatalf("expected 64 chars, got %d", len(token))
 	}
 }
 
-func TestValidateCSRFToken(t *testing.T) {
-	tests := []struct {
-		name  string
-		token string
-		valid bool
-	}{
-		{"valid token", GenerateCSRFToken("test"), true},
-		{"invalid - empty", "", false},
-		{"invalid - too short", "abc", false},
-		{"invalid - not hex", "gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg", false},
-		{"invalid - mixed case ok but must be hex", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", true},
+func TestGenerateCSRFToken_IsHex(t *testing.T) {
+	token, err := generateCSRFToken()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			result := isValidCSRFToken(test.token)
-			if result != test.valid {
-				t.Fatalf("expected %v, got %v", test.valid, result)
-			}
-		})
+	if _, err := hex.DecodeString(token); err != nil {
+		t.Fatalf("token is not valid hex: %v", err)
 	}
 }
 
-func TestCSRFTokenDifferentSessions(t *testing.T) {
-	token1 := GenerateCSRFToken("session1")
-	token2 := GenerateCSRFToken("session2")
-
+func TestGenerateCSRFToken_IsRandom(t *testing.T) {
+	token1, _ := generateCSRFToken()
+	token2, _ := generateCSRFToken()
 	if token1 == token2 {
-		t.Fatalf("different sessions should generate different tokens")
+		t.Fatal("two generated tokens should not be equal")
 	}
 }
