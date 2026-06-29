@@ -121,3 +121,20 @@ Padrão recorrente do projeto.
 
 
 */
+
+// DeleteExpired remove tokens expirados ou revogados do banco.
+// Retorna o número de tokens deletados.
+func (r *RefreshTokenRepository) DeleteExpired() (int64, error) {
+	result, err := r.db.Exec(
+		`DELETE FROM refresh_tokens
+		 WHERE expires_at < NOW() OR revoked = TRUE`,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete expired tokens: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	return rows, nil
+}

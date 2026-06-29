@@ -162,3 +162,14 @@ func TestLogout_RevokesToken(t *testing.T) {
 		t.Fatalf("logout failed: %v", err)
 	}
 }
+
+func (m *mockRefreshTokenRepository) DeleteExpired() (int64, error) {
+	var count int64
+	for key, rt := range m.tokens {
+		if rt.Revoked || time.Now().After(rt.ExpiresAt) {
+			delete(m.tokens, key)
+			count++
+		}
+	}
+	return count, nil
+}

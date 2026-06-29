@@ -139,6 +139,13 @@ func main() {
 	cartRepository := repository.NewCartRepository(dbConnection)
 	paymentRepository := repository.NewPaymentRepository(dbConnection)
 
+	// Context de aplicação — cancelado no shutdown
+	appCtx, appCancel := context.WithCancel(context.Background())
+	defer appCancel()
+
+	// Token cleanup job — roda a cada 24h
+	jobs.StartTokenCleanup(appCtx, refreshTokenRepository, 24*time.Hour)
+
 	// Usecases
 	productUsecase := usecase.NewProductUsecase(productRepository)
 	authUseCase := usecase.NewAuthUsecase(userRepository, refreshTokenRepository)

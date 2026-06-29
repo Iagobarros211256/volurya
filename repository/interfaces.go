@@ -10,4 +10,5 @@ type RefreshTokenRepositoryInterface interface {
 	GetByToken(token string) (*models.RefreshToken, error)
 	Revoke(token string) error
 	RevokeAllByUser(userID int) error
+	DeleteExpired() (int64, error)
 }
