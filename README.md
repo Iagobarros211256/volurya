@@ -307,8 +307,18 @@ Active development — hardened and working end-to-end payment flow.
 ### ✅ Semana 6 — CI/CD
 - [x] GitHub Actions pipeline on push and PR to main
 - [x] Build validation in CI
-- [x] Unit tests running in CI (middleware)
+- [x] Unit tests running in CI (middleware + usecase)
 - [x] Coverage report generated
+
+### ✅ Hardening — Production readiness
+- [x] Bootstrap admin uses DO NOTHING — password never overwritten on restart
+- [x] Refresh token cleanup job — expired/revoked tokens deleted every 24h
+- [x] 409 Conflict for duplicate email signup (was 500)
+- [x] ErrEmailAlreadyExists sentinel error propagated correctly
+- [x] Security headers middleware — X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, Permissions-Policy
+- [x] CSRF protection for JSON requests — Double Submit Cookie Pattern
+- [x] RefreshTokenRepositoryInterface — usecase decoupled from concrete type
+- [x] usecase tests with proper mocks (8 tests)
 
 ## 🔒 Security
 
@@ -322,8 +332,8 @@ Active development — hardened and working end-to-end payment flow.
 - [x] Stripe webhook HMAC validation
 - [x] /metrics restricted by IP
 - [x] Swagger disabled in production
-- [ ] Helmet headers
-- [ ] CSRF protection for JSON requests (currently bypassed)
+- [x] Helmet headers (X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy)
+- [x] CSRF protection for JSON requests — Double Submit Cookie Pattern
 
 ## 📊 Observability
 
