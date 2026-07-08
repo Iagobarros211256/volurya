@@ -6,26 +6,32 @@ const adminSection = document.getElementById('admin-section') || document.getEle
 const productsList = document.getElementById('products-list') || document.getElementById('productsList');
 const productForm = document.getElementById('productForm');
 
-// Verificação de role admin — não apenas isLoggedIn
-function isAdmin() {
+// Verificação de role admin via /api/auth/me
+async function isAdmin() {
   try {
-    const token = localStorage.getItem('token');
-    if (!token) return false;
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.role === 'admin';
+    const res = await originalFetch(`${API_BASE}/auth/me`, {
+      credentials: 'include'
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data.role === 'admin';
   } catch {
     return false;
   }
 }
 
-if (!isLoggedIn() || !isAdmin()) {
-  if (loginSection) loginSection.style.display = 'block';
-  if (adminSection) adminSection.style.display = 'none';
-} else {
-  if (loginSection) loginSection.style.display = 'none';
-  if (adminSection) adminSection.style.display = 'block';
-  loadProducts();
-}
+;(async () => {
+  const loggedIn = await isLoggedIn();
+  const admin = loggedIn && await isAdmin();
+  if (!admin) {
+    if (loginSection) loginSection.style.display = 'block';
+    if (adminSection) adminSection.style.display = 'none';
+  } else {
+    if (loginSection) loginSection.style.display = 'none';
+    if (adminSection) adminSection.style.display = 'block';
+    loadProducts();
+  }
+})();
 
 // Login
 document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
@@ -36,7 +42,7 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
   try {
     await login(email, password);
 
-    if (!isAdmin()) {
+    if (!await isAdmin()) {
       showToast('Acesso restrito a administradores', 'danger');
       logout();
       return;

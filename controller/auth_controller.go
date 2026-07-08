@@ -141,5 +141,6 @@ func (a *AuthController) Me(ctx *gin.Context) {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{"user_id": userID})
+	role, _ := ctx.Get("role")
+	ctx.JSON(http.StatusOK, gin.H{"user_id": userID, "role": role})
 }
