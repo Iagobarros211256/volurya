@@ -102,6 +102,11 @@ func main() {
 
 	router.HEAD("/", func(c *gin.Context) { c.Status(200) })
 
+	// Handler 404 customizado
+	router.NoRoute(func(c *gin.Context) {
+		c.HTML(http.StatusNotFound, "404.html", gin.H{})
+	})
+
 	// DB
 	dbConnection, err := db.ConnectDB()
 	if err != nil {
