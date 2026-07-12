@@ -24,11 +24,11 @@ async function isAdmin() {
   const loggedIn = await isLoggedIn();
   const admin = loggedIn && await isAdmin();
   if (!admin) {
-    if (loginSection) loginSection.style.display = 'block';
-    if (adminSection) adminSection.style.display = 'none';
+    if (loginSection) { loginSection.classList.remove('d-none'); loginSection.style.display = 'block'; }
+    if (adminSection) { adminSection.classList.add('d-none'); adminSection.style.display = 'none'; }
   } else {
-    if (loginSection) loginSection.style.display = 'none';
-    if (adminSection) adminSection.style.display = 'block';
+    if (loginSection) { loginSection.classList.add('d-none'); loginSection.style.display = 'none'; }
+    if (adminSection) { adminSection.classList.remove('d-none'); adminSection.style.display = 'block'; }
     loadProducts();
   }
 })();
