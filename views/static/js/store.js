@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const loading = document.getElementById('loading');
   const noProducts = document.getElementById('no-products');
 
-  loading.style.display = 'block';
+  // skeletons já visíveis por padrão — não precisa forçar display
   container.innerHTML = '';
   noProducts.classList.add('d-none');
 

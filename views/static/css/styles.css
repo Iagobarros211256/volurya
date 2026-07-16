@@ -104,3 +104,58 @@ css@media (prefers-reduced-motion: reduce) {
 serif como fallback genérico é muito diferente de "Russo One" — a aparência vai mudar drasticamente se a fonte não carregar. Use sans-serif como fallback mais próximo, ou defina uma fonte de sistema similar.
 
 /*
+/* Skeleton Loading */
+.skeleton {
+  background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-card {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.skeleton-img {
+  width: 100%;
+  height: 200px;
+}
+
+.skeleton-title {
+  height: 20px;
+  width: 70%;
+  margin: 16px 16px 8px;
+}
+
+.skeleton-text {
+  height: 14px;
+  width: 90%;
+  margin: 0 16px 6px;
+}
+
+.skeleton-text-short {
+  height: 14px;
+  width: 50%;
+  margin: 0 16px 16px;
+}
+
+.skeleton-price {
+  height: 28px;
+  width: 40%;
+  margin: 0 16px 12px;
+}
+
+.skeleton-btn {
+  height: 38px;
+  width: calc(100% - 32px);
+  margin: 0 16px 16px;
+  border-radius: 4px;
+}
