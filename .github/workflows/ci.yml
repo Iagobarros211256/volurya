@@ -29,10 +29,10 @@ jobs:
         env:
           JWT_SECRET: test_secret_for_ci_only_minimum_32_chars
           APP_ENV: test
-        run: go test ./middleware/... ./usecase/... -v
+        run: go test ./middleware/... ./usecase/... ./controller/... -v
 
       - name: Check test coverage
         env:
           JWT_SECRET: test_secret_for_ci_only_minimum_32_chars
           APP_ENV: test
-        run: go test ./middleware/... ./usecase/... -coverprofile=coverage.out && go tool cover -func=coverage.out
+        run: go test ./middleware/... ./usecase/... ./controller/... -coverprofile=coverage.out && go tool cover -func=coverage.out
