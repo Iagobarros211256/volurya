@@ -140,7 +140,7 @@ func (pc *PaymentController) Webhook(c *gin.Context) {
 	}
 
 	// Validação real da assinatura do Stripe
-	event, err := webhook.ConstructEvent(payload, signatureHeader, webhookSecret)
+	event, err := webhook.ConstructEventWithOptions(payload, signatureHeader, webhookSecret, webhook.ConstructEventOptions{IgnoreAPIVersionMismatch: true})
 	if err != nil {
 		slog.Warn("webhook signature verification failed", "error", err)
 		c.JSON(http.StatusForbidden, gin.H{"error": "invalid signature"})
