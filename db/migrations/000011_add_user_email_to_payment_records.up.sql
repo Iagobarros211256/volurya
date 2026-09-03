@@ -1,0 +1,1 @@
+ALTER TABLE payment_records ADD COLUMN IF NOT EXISTS user_email TEXT NOT NULL DEFAULT '';

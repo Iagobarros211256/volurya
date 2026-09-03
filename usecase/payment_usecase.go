@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"api/models"
+	"api/email"
 	"api/repository"
 	"fmt"
 	"log/slog"
@@ -10,20 +11,23 @@ import (
 )
 
 type PaymentUsecase struct {
-	orderRepo   *repository.OrderRepository
-	paymentRepo *repository.PaymentRepository
-	productRepo *repository.ProductRepository
+	orderRepo    *repository.OrderRepository
+	paymentRepo  *repository.PaymentRepository
+	productRepo  *repository.ProductRepository
+	emailService *email.EmailService
 }
 
 func NewPaymentUsecase(
-	orderRepo *repository.OrderRepository,
-	paymentRepo *repository.PaymentRepository,
-	productRepo *repository.ProductRepository,
+	orderRepo    *repository.OrderRepository,
+	paymentRepo  *repository.PaymentRepository,
+	productRepo  *repository.ProductRepository,
+	emailService *email.EmailService,
 ) *PaymentUsecase {
 	return &PaymentUsecase{
-		orderRepo:   orderRepo,
-		paymentRepo: paymentRepo,
-		productRepo: productRepo,
+		orderRepo:    orderRepo,
+		paymentRepo:  paymentRepo,
+		productRepo:  productRepo,
+		emailService: emailService,
 	}
 }
 
@@ -178,6 +182,23 @@ func (pu *PaymentUsecase) HandlePaymentSuccess(paymentIntentID string) error {
 		"payment_intent", paymentIntentID,
 	)
 
+	// Envia email de confirmação — falha não bloqueia o fluxo
+	if pu.emailService != nil && payment.UserEmail != "" {
+		go func() {
+			if err := pu.emailService.SendOrderConfirmation(
+				payment.UserEmail,
+				payment.OrderID,
+				payment.Amount,
+				nil,
+			); err != nil {
+				slog.Error("failed to send order confirmation email",
+					"error", err,
+					"order_id", payment.OrderID,
+				)
+			}
+		}()
+	}
+
 	return nil
 }
 
@@ -222,6 +243,7 @@ func (pu *PaymentUsecase) CreatePaymentRecord(
 	paymentIntentID string,
 	amount int,
 	currency string,
+	userEmail string,
 ) (*models.PaymentRecord, error) {
 	if orderID <= 0 || paymentIntentID == "" || amount <= 0 {
 		return nil, fmt.Errorf("invalid payment parameters")
@@ -232,6 +254,7 @@ func (pu *PaymentUsecase) CreatePaymentRecord(
 		PaymentIntentID: paymentIntentID,
 		Amount:          amount,
 		Currency:        currency,
+		UserEmail:       userEmail,
 		Status:          models.PaymentStatusRequiresPaymentMethod,
 		CreatedAt:       time.Now(),
 		UpdatedAt:       time.Now(),

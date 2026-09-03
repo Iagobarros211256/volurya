@@ -4,7 +4,6 @@ import (
 	"api/models"
 	"database/sql"
 	"fmt"
-	"time"
 )
 
 type PaymentRepository struct {
@@ -20,18 +19,17 @@ func (pr *PaymentRepository) CreatePaymentRecord(payment models.PaymentRecord) (
 	var id int
 	err := pr.connection.QueryRow(
 		`INSERT INTO payment_records (
-			order_id, payment_intent_id, amount, currency, status, stripe_customer_id, error_message, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			order_id, payment_intent_id, amount, currency, status, user_email, stripe_customer_id, error_message, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
 		RETURNING id`,
 		payment.OrderID,
 		payment.PaymentIntentID,
 		payment.Amount,
 		payment.Currency,
 		payment.Status,
+		payment.UserEmail,
 		payment.StripeCustomerID,
 		payment.ErrorMessage,
-		time.Now(),
-		time.Now(),
 	).Scan(&id)
 	if err != nil {
 		return 0, err
@@ -43,7 +41,7 @@ func (pr *PaymentRepository) CreatePaymentRecord(payment models.PaymentRecord) (
 func (pr *PaymentRepository) GetPaymentByIntentID(paymentIntentID string) (*models.PaymentRecord, error) {
 	payment := &models.PaymentRecord{}
 	err := pr.connection.QueryRow(
-		`SELECT id, order_id, payment_intent_id, amount, currency, status, stripe_customer_id, error_message, created_at, updated_at
+		`SELECT id, order_id, payment_intent_id, amount, currency, status, user_email, stripe_customer_id, error_message, created_at, updated_at
 		 FROM payment_records WHERE payment_intent_id = $1`,
 		paymentIntentID,
 	).Scan(
@@ -53,6 +51,7 @@ func (pr *PaymentRepository) GetPaymentByIntentID(paymentIntentID string) (*mode
 		&payment.Amount,
 		&payment.Currency,
 		&payment.Status,
+		&payment.UserEmail,
 		&payment.StripeCustomerID,
 		&payment.ErrorMessage,
 		&payment.CreatedAt,

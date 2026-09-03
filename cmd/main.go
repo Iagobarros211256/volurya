@@ -5,6 +5,7 @@ import (
 	"api/config"
 	"api/controller"
 	"api/db"
+	"api/email"
 	"api/jobs"
 	"api/logger"
 	"api/middleware"
@@ -157,7 +158,8 @@ func main() {
 	authUseCase := usecase.NewAuthUsecase(userRepository, refreshTokenRepository)
 	orderUsecase := usecase.NewOrderUsecase(orderRepository, productRepository)
 	cartUsecase := usecase.NewCartUsecase(cartRepository, productRepository)
-	paymentUsecase := usecase.NewPaymentUsecase(orderRepository, paymentRepository, productRepository)
+	emailService := email.NewEmailService()
+	paymentUsecase := usecase.NewPaymentUsecase(orderRepository, paymentRepository, productRepository, emailService)
 
 	// Controllers
 	productController := controller.NewProductController(

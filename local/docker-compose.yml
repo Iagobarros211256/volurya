@@ -49,6 +49,7 @@ services:
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
       STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
+      RESEND_API_KEY: ${RESEND_API_KEY}
 
   prometheus:
     image: prom/prometheus:latest

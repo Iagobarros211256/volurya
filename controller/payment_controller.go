@@ -92,7 +92,7 @@ func (pc *PaymentController) Checkout(c *gin.Context) {
 	}
 
 	// Registrar pagamento para auditoria
-	if _, err := pc.paymentUsecase.CreatePaymentRecord(orderDetail.ID, pi.ID, int(amountInCents), "BRL"); err != nil {
+	if _, err := pc.paymentUsecase.CreatePaymentRecord(orderDetail.ID, pi.ID, int(amountInCents), "BRL", req.UserEmail); err != nil {
 		slog.Error("failed to create payment record", "error", err, "order_id", orderDetail.ID)
 		// Não falha o request mas loga como erro — não como warn
 	}

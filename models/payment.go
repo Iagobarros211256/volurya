@@ -55,6 +55,7 @@ type PaymentRecord struct {
 	Amount           int           `json:"amount"` // in cents (centavos)
 	Currency         string        `json:"currency"`
 	Status           PaymentStatus `json:"status"`
+	UserEmail        string        `json:"user_email,omitempty"`
 	StripeCustomerID string        `json:"stripe_customer_id,omitempty"`
 	ErrorMessage     string        `json:"error_message,omitempty"`
 	CreatedAt        time.Time     `json:"created_at"`
