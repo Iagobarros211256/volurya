@@ -193,6 +193,16 @@ async function checkout() {
     const cartRes = await fetch(`${API_BASE}/cart`);
     const cart = await cartRes.json();
 
+    // Busca email do usuário autenticado
+    let userEmail = '';
+    try {
+      const meRes = await originalFetch(`${API_BASE}/auth/me`, { credentials: 'include' });
+      if (meRes.ok) {
+        const me = await meRes.json();
+        userEmail = me.email || '';
+      }
+    } catch {}
+
     // Monta lista de itens do carrinho
     const items = (cart.items || []).map(item => ({
       product_id: item.product_id,
@@ -212,7 +222,7 @@ async function checkout() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         items,
-        user_email: '' // backend pega do JWT futuramente
+        user_email: userEmail
       })
     });
 

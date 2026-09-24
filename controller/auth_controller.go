@@ -142,5 +142,10 @@ func (a *AuthController) Me(ctx *gin.Context) {
 		return
 	}
 	role, _ := ctx.Get("role")
-	ctx.JSON(http.StatusOK, gin.H{"user_id": userID, "role": role})
+	user, err := a.authUsecase.GetUserByID(userID)
+	if err != nil || user == nil {
+		ctx.JSON(http.StatusOK, gin.H{"user_id": userID, "role": role, "email": ""})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{"user_id": userID, "role": role, "email": user.Email})
 }

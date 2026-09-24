@@ -30,6 +30,15 @@ func (m *mockUserRepo) GetByEmail(email string) (*models.User, error) {
 	return u, nil
 }
 
+func (m *mockUserRepo) GetByID(id int) (*models.User, error) {
+	for _, u := range m.users {
+		if u.ID == id {
+			return u, nil
+		}
+	}
+	return nil, nil
+}
+
 func (m *mockUserRepo) Create(user models.User) (int, error) {
 	if _, exists := m.users[user.Email]; exists {
 		return 0, errors.New("email already registered")

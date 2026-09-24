@@ -225,3 +225,7 @@ goRole: string(models.UserRoleUser),
 Já apontado em metrics.go — Login não incrementa nenhuma métrica. Adicione pelo menos um counter de logins para monitoramento de autenticação.
 
 */
+
+func (a *AuthUsecase) GetUserByID(id int) (*models.User, error) {
+	return a.userRepo.GetByID(id)
+}

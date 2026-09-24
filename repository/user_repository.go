@@ -3,6 +3,7 @@ package repository
 import (
 	"api/models"
 	"database/sql"
+	"fmt"
 	"errors"
 
 	"github.com/lib/pq"
@@ -18,6 +19,7 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 
 type UserRepositoryInterface interface {
 	GetByEmail(email string) (*models.User, error)
+	GetByID(id int) (*models.User, error)
 	Create(user models.User) (int, error)
 }
 
@@ -115,3 +117,17 @@ gofunc (r *UserRepository) GetByID(id int) (*models.User, error)
 
 
 */
+
+func (r *UserRepository) GetByID(id int) (*models.User, error) {
+	var u models.User
+	err := r.db.QueryRow(
+		`SELECT id, email, role FROM users WHERE id = $1`, id,
+	).Scan(&u.ID, &u.Email, &u.Role)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get user by id failed: %w", err)
+	}
+	return &u, nil
+}
