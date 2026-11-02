@@ -1,5 +1,5 @@
 # ---------- BUILD STAGE ----------
-FROM golang:1.24-alpine AS builder
+FROM golang:1.27.3-alpine3.24 AS builder
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o app ./cmd
 
 # ---------- FINAL STAGE ----------
-FROM alpine:3.20
+FROM alpine:3.24
 RUN apk --no-cache add ca-certificates tzdata
 RUN adduser -D -u 1001 appuser
 WORKDIR /app

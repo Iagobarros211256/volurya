@@ -34,6 +34,12 @@ func SetupTestDB(t *testing.T) *sql.DB {
 		t.Skipf("test database not available (start with docker compose -f local/docker-compose.test.yml up -d): %v", err)
 	}
 
+	// Confirma o banco real antes de executar migrations ou limpeza.
+	if err := ensureTestDatabase(db); err != nil {
+		_ = db.Close()
+		t.Fatalf("configuração insegura do banco de testes: %v", err)
+	}
+
 	db.SetMaxOpenConns(5)
 	db.SetMaxIdleConns(2)
 

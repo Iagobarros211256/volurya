@@ -84,17 +84,23 @@ func (pc *PaymentController) Checkout(c *gin.Context) {
 		return
 	}
 
-	// Atualizar ordem com payment intent
-	if err := pc.paymentUsecase.UpdateOrderPaymentIntent(orderDetail.ID, pi.ID, int(amountInCents)); err != nil {
-		slog.Error("failed to update order", "error", err, "order_id", orderDetail.ID)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to process order"})
+	// Persistir vínculo e registro financeiro na mesma transação.
+	if err := pc.paymentUsecase.RegisterPaymentIntentAtomically(
+		orderDetail.ID,
+		pi.ID,
+		int(amountInCents),
+		"BRL",
+		req.UserEmail,
+	); err != nil {
+		slog.Error("failed to register payment intent atomically",
+			"error", err,
+			"order_id", orderDetail.ID,
+			"payment_intent", pi.ID,
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to process order",
+		})
 		return
-	}
-
-	// Registrar pagamento para auditoria
-	if _, err := pc.paymentUsecase.CreatePaymentRecord(orderDetail.ID, pi.ID, int(amountInCents), "BRL", req.UserEmail); err != nil {
-		slog.Error("failed to create payment record", "error", err, "order_id", orderDetail.ID)
-		// Não falha o request mas loga como erro — não como warn
 	}
 
 	slog.Info("checkout created",
@@ -154,21 +160,27 @@ func (pc *PaymentController) Webhook(c *gin.Context) {
 		piID, err := extractPaymentIntentID(event.Data.Raw)
 		if err != nil {
 			slog.Error("failed to extract payment intent ID", "error", err, "event_id", event.ID)
-			break
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payment intent payload"})
+			return
 		}
 		if err := pc.paymentUsecase.HandlePaymentSuccess(piID); err != nil {
 			slog.Error("failed to handle payment success", "error", err, "pi_id", piID)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "webhook processing failed"})
+			return
 		}
 
 	case "payment_intent.payment_failed":
 		piID, err := extractPaymentIntentID(event.Data.Raw)
 		if err != nil {
 			slog.Error("failed to extract payment intent ID", "error", err, "event_id", event.ID)
-			break
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payment intent payload"})
+			return
 		}
 		errorMsg := extractPaymentErrorMessage(event.Data.Raw)
 		if err := pc.paymentUsecase.HandlePaymentFailed(piID, errorMsg); err != nil {
 			slog.Error("failed to handle payment failure", "error", err, "pi_id", piID)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "webhook processing failed"})
+			return
 		}
 
 	case "charge.dispute.created":
@@ -183,35 +195,46 @@ func (pc *PaymentController) Webhook(c *gin.Context) {
 
 // extractPaymentIntentID extrai o ID do payment intent do payload raw do webhook
 func extractPaymentIntentID(raw []byte) (string, error) {
-	var data map[string]interface{}
-	if err := json.Unmarshal(raw, &data); err != nil {
+	var payload struct {
+		ID     string `json:"id"`
+		Object string `json:"object"`
+	}
+
+	if err := json.Unmarshal(raw, &payload); err != nil {
 		return "", err
 	}
-	obj, ok := data["object"].(map[string]interface{})
-	if !ok {
-		return "", errors.New("invalid webhook data structure")
+
+	if payload.Object != "payment_intent" {
+		return "", errors.New("invalid payment intent object")
 	}
-	id, ok := obj["id"].(string)
-	if !ok {
+
+	if payload.ID == "" {
 		return "", errors.New("payment intent ID not found")
 	}
-	return id, nil
+
+	return payload.ID, nil
 }
 
 // extractPaymentErrorMessage extrai a mensagem de erro do payload raw
 func extractPaymentErrorMessage(raw []byte) string {
-	var data map[string]interface{}
-	if err := json.Unmarshal(raw, &data); err != nil {
+	var payload struct {
+		Object           string `json:"object"`
+		LastPaymentError *struct {
+			Message string `json:"message"`
+		} `json:"last_payment_error"`
+	}
+
+	if err := json.Unmarshal(raw, &payload); err != nil {
 		return ""
 	}
-	obj, ok := data["object"].(map[string]interface{})
-	if !ok {
+
+	if payload.Object != "payment_intent" {
 		return ""
 	}
-	errData, ok := obj["last_payment_error"].(map[string]interface{})
-	if !ok {
+
+	if payload.LastPaymentError == nil {
 		return ""
 	}
-	msg, _ := errData["message"].(string)
-	return msg
+
+	return payload.LastPaymentError.Message
 }

@@ -76,23 +76,6 @@ func IsStripeEnabled() bool {
 	return StripeSecretKey != "" && StripePublishableKey != ""
 }
 
-// ValidateWebhookSignature validates a Stripe webhook signature
-// This is used to ensure webhooks are from Stripe
-func ValidateWebhookSignature(payload []byte, signature string) bool {
-	//Retornar false silenciosamente pode fazer o controller rejeitar webhooks
-	// legítimos sem clareza do motivo. Retornar um error seria mais expressivo.
-	if StripeWebhookSecret == "" {
-		slog.Warn("webhook signature validation skipped: STRIPE_WEBHOOK_SECRET not configured")
-		return false
-	}
-
-	// Import the webhook signing package for proper validation
-	// For now, this is a placeholder - actual validation done in controller
-	return signature != ""
-	//Isso retorna true para qualquer string não-vazia. Se alguém chamar essa função achando que valida o webhook, aceita requisições forjadas.
-	//  O Stripe já fornece a validação pronta — use diretamente ou remova essa função.
-}
-
 //Como já mencionado no config.go, um struct centralizado resolveria vários desses problemas:
 //gotype Config struct {
 //    AccessTokenDuration  time.Duration

@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup diario do PostgreSQL da Volurya
+
+[Timer]
+OnCalendar=*-*-* 03:00:00 America/Fortaleza
+Persistent=true
+Unit=volurya-backup.service
+
+[Install]
+WantedBy=timers.target

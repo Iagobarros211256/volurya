@@ -90,7 +90,7 @@ func (pr *ProductRepository) CreateProduct(product models.Product, userID int) (
 func (pr *ProductRepository) GetProductById(id int) (*models.Product, error) {
 	var p models.Product
 	err := pr.db.QueryRow(
-		`SELECT id, user_id, name, description, price, stock, COALESCE(image_url, '')
+		`SELECT id, user_id, name, COALESCE(description, ''), price, stock, COALESCE(image_url, '')
 		 FROM products WHERE id = $1`,
 		id,
 	).Scan(

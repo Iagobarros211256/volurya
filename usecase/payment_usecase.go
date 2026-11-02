@@ -1,8 +1,8 @@
 package usecase
 
 import (
-	"api/models"
 	"api/email"
+	"api/models"
 	"api/repository"
 	"fmt"
 	"log/slog"
@@ -18,9 +18,9 @@ type PaymentUsecase struct {
 }
 
 func NewPaymentUsecase(
-	orderRepo    *repository.OrderRepository,
-	paymentRepo  *repository.PaymentRepository,
-	productRepo  *repository.ProductRepository,
+	orderRepo *repository.OrderRepository,
+	paymentRepo *repository.PaymentRepository,
+	productRepo *repository.ProductRepository,
 	emailService *email.EmailService,
 ) *PaymentUsecase {
 	return &PaymentUsecase{
@@ -67,41 +67,20 @@ func (pu *PaymentUsecase) CreateOrderForCheckout(
 	// Arredondar total para evitar imprecisão de float
 	totalPrice = math.Round(totalPrice*100) / 100
 
-	// Criar ordem
+	// Pedido, itens e estoque são persistidos na mesma transação.
 	order := models.Order{
 		UserID: userID,
 		Total:  totalPrice,
 		Status: string(models.OrderStatusPending),
 	}
 
-	orderID, err := pu.orderRepo.CreateOrder(order)
+	orderID, err := pu.orderRepo.CreateCheckoutOrder(order, orderItems)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create order: %w", err)
+		return nil, fmt.Errorf("failed to create checkout order: %w", err)
 	}
 
-	// Persistir order_items no banco
 	for i := range orderItems {
 		orderItems[i].OrderID = orderID
-	}
-	if err := pu.orderRepo.CreateOrderItems(orderID, orderItems); err != nil {
-		// Compensar — cancelar ordem órfã
-		_ = pu.orderRepo.UpdateOrderStatus(orderID, string(models.OrderStatusCancelled))
-		return nil, fmt.Errorf("failed to create order items: %w", err)
-	}
-
-	// Decrementar estoque atomicamente
-	for _, item := range orderItems {
-		if err := pu.productRepo.DecrementStock(item.ProductID, item.Quantity); err != nil {
-			// Compensar — cancelar ordem e restaurar itens já decrementados seria ideal
-			// Por ora cancela a ordem e loga — melhoria futura: transação completa
-			_ = pu.orderRepo.UpdateOrderStatus(orderID, string(models.OrderStatusCancelled))
-			slog.Error("failed to decrement stock",
-				"error", err,
-				"product_id", item.ProductID,
-				"order_id", orderID,
-			)
-			return nil, fmt.Errorf("failed to update stock: %w", err)
-		}
 	}
 
 	slog.Info("order created for checkout",
@@ -124,7 +103,7 @@ func (pu *PaymentUsecase) CreateOrderForCheckout(
 
 // CancelOrder cancela uma ordem órfã
 func (pu *PaymentUsecase) CancelOrder(orderID int) error {
-	return pu.orderRepo.UpdateOrderStatus(orderID, string(models.OrderStatusCancelled))
+	return pu.orderRepo.CancelCheckoutOrderAndRestoreStock(orderID)
 }
 
 func (pu *PaymentUsecase) UpdateOrderPaymentIntent(
@@ -160,21 +139,19 @@ func (pu *PaymentUsecase) HandlePaymentSuccess(paymentIntentID string) error {
 		return fmt.Errorf("payment record not found: %w", err)
 	}
 
-	// Idempotência — evita processar duas vezes
-	if payment.Status == models.PaymentStatusSucceeded {
+	// O repositório atualiza pagamento e pedido na mesma transação.
+	// A verificação de idempotência ocorre sob bloqueio das linhas.
+	updated, err := pu.paymentRepo.ConfirmPaymentSucceeded(paymentIntentID)
+	if err != nil {
+		return fmt.Errorf("failed to confirm payment atomically: %w", err)
+	}
+
+	if !updated {
 		slog.Info("payment already processed, skipping",
 			"payment_intent", paymentIntentID,
 			"order_id", payment.OrderID,
 		)
 		return nil
-	}
-
-	if err := pu.paymentRepo.UpdatePaymentStatus(payment.ID, string(models.PaymentStatusSucceeded)); err != nil {
-		return fmt.Errorf("failed to update payment status: %w", err)
-	}
-
-	if err := pu.orderRepo.UpdateOrderStatus(payment.OrderID, string(models.OrderStatusPaid)); err != nil {
-		return fmt.Errorf("failed to update order status: %w", err)
 	}
 
 	slog.Info("payment succeeded",
@@ -202,37 +179,29 @@ func (pu *PaymentUsecase) HandlePaymentSuccess(paymentIntentID string) error {
 	return nil
 }
 
-func (pu *PaymentUsecase) HandlePaymentFailed(paymentIntentID, errorMessage string) error {
+func (pu *PaymentUsecase) HandlePaymentFailed(
+	paymentIntentID, errorMessage string,
+) error {
 	if paymentIntentID == "" {
 		return fmt.Errorf("payment intent ID is required")
 	}
 
-	payment, err := pu.paymentRepo.GetPaymentByIntentID(paymentIntentID)
+	updated, err := pu.paymentRepo.RecordPaymentFailure(
+		paymentIntentID, errorMessage,
+	)
 	if err != nil {
-		return fmt.Errorf("payment record not found: %w", err)
+		return fmt.Errorf("failed to record payment failure: %w", err)
 	}
 
-	// Idempotência
-	if payment.Status == models.PaymentStatusFailed {
+	if !updated {
+		slog.Info("payment failure ignored or already processed",
+			"payment_intent", paymentIntentID,
+		)
 		return nil
 	}
 
-	if err := pu.paymentRepo.UpdatePaymentStatusWithError(
-		payment.ID,
-		string(models.PaymentStatusFailed),
-		errorMessage,
-	); err != nil {
-		return fmt.Errorf("failed to update payment: %w", err)
-	}
-
-	if err := pu.orderRepo.UpdateOrderStatus(payment.OrderID, string(models.OrderStatusFailed)); err != nil {
-		return fmt.Errorf("failed to update order status: %w", err)
-	}
-
-	slog.Info("payment failed",
-		"order_id", payment.OrderID,
+	slog.Info("payment attempt failed",
 		"payment_intent", paymentIntentID,
-		"error", errorMessage,
 	)
 
 	return nil

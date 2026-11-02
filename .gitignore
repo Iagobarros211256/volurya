@@ -13,3 +13,7 @@ bin/
 .env
 # Compiled binary
 main
+
+# Credenciais e configuracoes por ambiente
+.env.*
+!.env.example

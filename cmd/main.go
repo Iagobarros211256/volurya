@@ -118,8 +118,7 @@ func main() {
 	// Storage R2
 	r2Storage, err := storage.NewR2Storage()
 	if err != nil {
-		slog.Error("failed to initialize R2 storage", "error", err)
-		os.Exit(1)
+		slog.Warn("R2 unavailable; image uploads disabled", "error", err)
 	}
 
 	// Stripe
@@ -175,6 +174,18 @@ func main() {
 	healthController := controller.NewHealthController(dbConnection)
 	paymentController := controller.NewPaymentController(paymentUsecase)
 
+    // Pagamentos desabilitados por padrão.
+    paymentsEnabled := os.Getenv("PAYMENTS_ENABLED") == "true"
+    paymentGate := func(c *gin.Context) {
+        if !paymentsEnabled {
+            c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
+                "error": "payments temporarily unavailable",
+            })
+            return
+        }
+        c.Next()
+    }
+
 	// Rate limiters
 	authLimiter := middleware.NewRateLimiter(5, 1*time.Minute)
 	refreshLimiter := middleware.NewRateLimiter(10, 1*time.Minute)
@@ -192,10 +203,10 @@ func main() {
 		public.POST("/refresh", refreshLimiter.Middleware(), authController.RefreshToken)
 		public.POST("/logout", authController.Logout)
 		public.GET("/health", healthController.Health)
-		public.POST("/webhook", paymentController.Webhook)
+		public.POST("/webhook", paymentGate, paymentController.Webhook)
 	}
 
-	router.GET("/checkout", func(c *gin.Context) {
+	router.GET("/checkout", paymentGate, func(c *gin.Context) {
 		c.HTML(200, "checkout.html", gin.H{})
 	})
 	router.GET("/order/success", func(c *gin.Context) {
@@ -217,14 +228,22 @@ func main() {
 			adminProduct.POST("", productController.CreateProduct)
 			adminProduct.PUT("/:productId", productController.UpdateProduct)
 			adminProduct.DELETE("/:productId", productController.Delete)
-			adminProduct.POST("/:productId/image", productController.UploadImage)
+			adminProduct.POST("/:productId/image", func(c *gin.Context) {
+					if r2Storage == nil {
+						c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
+							"error": "image uploads temporarily unavailable",
+						})
+						return
+					}
+					productController.UploadImage(c)
+				})
 		}
 
 		// Checkout — protegido
-		protected.POST("/checkout", paymentController.Checkout)
+		protected.POST("/checkout", paymentGate, paymentController.Checkout)
 
 		// Ordens
-		protected.POST("/orders", orderController.CreateOrder)
+		protected.POST("/orders", paymentGate, orderController.CreateOrder)
 
 		// SSE
 		protected.GET("/events", notificationController.Stream)
@@ -234,7 +253,7 @@ func main() {
 		protected.POST("/cart/items", cartController.AddItem)
 		protected.PUT("/cart/items/:itemId", cartController.UpdateItem)
 		protected.DELETE("/cart/items/:itemId", cartController.RemoveItem)
-		protected.POST("/cart/checkout", cartController.Checkout)
+		protected.POST("/cart/checkout", paymentGate, cartController.Checkout)
 		protected.GET("/auth/me", authController.Me)
 	}
 
@@ -252,22 +271,6 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 	srv.RegisterOnShutdown(notificationHub.Close)
-
-	// HTTPS redirect em produção
-	if os.Getenv("APP_ENV") == "production" {
-		go func() {
-			slog.Info("HTTP redirect server rodando na porta 80")
-			redirectServer := &http.Server{
-				Addr: ":80",
-				Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					http.Redirect(w, r, "https://"+r.Host+r.RequestURI, http.StatusMovedPermanently)
-				}),
-			}
-			if err := redirectServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				slog.Error("erro no redirect server", "error", err)
-			}
-		}()
-	}
 
 	go func() {
 		slog.Info("API Volurya rodando", "port", port)
