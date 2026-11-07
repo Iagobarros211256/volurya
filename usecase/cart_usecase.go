@@ -7,6 +7,8 @@ import (
 	"errors"
 )
 
+var ErrPreorderCheckout = errors.New("produto disponível apenas por pré-venda assistida")
+
 type CartUsecase struct {
 	cartRepo    *repository.CartRepository
 	productRepo *repository.ProductRepository
@@ -49,6 +51,10 @@ func (uc *CartUsecase) AddItem(userID, productID, quantity int) (*models.CartIte
 	if product == nil {
 		return nil, errors.New("product not found")
 	}
+	if product.SalesType != models.SalesTypeStandard {
+		return nil, ErrPreorderCheckout
+	}
+
 	if product.Stock < quantity {
 		return nil, ErrInsufficientStock
 	}
@@ -97,6 +103,10 @@ func (uc *CartUsecase) UpdateItem(userID, itemID, quantity int) (*models.CartIte
 	if err != nil {
 		return nil, err
 	}
+	if product.SalesType != models.SalesTypeStandard {
+		return nil, ErrPreorderCheckout
+	}
+
 	if product.Stock < quantity {
 		return nil, ErrInsufficientStock
 	}

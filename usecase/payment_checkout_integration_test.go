@@ -1445,3 +1445,334 @@ func TestConcurrentRegisterDifferentPaymentIntentsRejectsOne(t *testing.T) {
 		t.Errorf("estoque esperado=3, obtido=%d", stock)
 	}
 }
+
+func TestCheckoutIdempotencyReusesOrderWithoutSecondStockReservation(t *testing.T) {
+	conn := db.SetupTestDB(t)
+
+	var userID, productID int
+
+	err := conn.QueryRow(
+		`INSERT INTO users (email, password)
+		 VALUES ($1, $2) RETURNING id`,
+		"checkout-replay@example.invalid", "test-password",
+	).Scan(&userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = conn.QueryRow(
+		`INSERT INTO products (user_id, name, price, stock)
+		 VALUES ($1, $2, $3, $4) RETURNING id`,
+		userID, "Camiseta Volurya", 79.90, 2,
+	).Scan(&productID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	uc := NewPaymentUsecase(
+		repository.NewOrderRepository(conn),
+		repository.NewPaymentRepository(conn),
+		repository.NewProductRepository(conn),
+		nil,
+	)
+
+	items := []models.CheckoutItemInput{
+		{ProductID: productID, Quantity: 2},
+	}
+
+	const key = "checkout-replay-key-001"
+	const email = "checkout-replay@example.invalid"
+
+	first, firstReused, err := uc.CreateOrderForCheckoutIdempotent(
+		userID, items, key, email,
+	)
+	if err != nil {
+		t.Fatalf("primeiro checkout: %v", err)
+	}
+	if firstReused {
+		t.Fatal("primeiro checkout marcado como reutilizado")
+	}
+
+	second, secondReused, err := uc.CreateOrderForCheckoutIdempotent(
+		userID, items, key, email,
+	)
+	if err != nil {
+		t.Fatalf("repetição do checkout: %v", err)
+	}
+	if !secondReused {
+		t.Fatal("segunda chamada deveria reutilizar o pedido")
+	}
+
+	if first.ID != second.ID {
+		t.Errorf(
+			"pedido duplicado: primeiro=%d, segundo=%d",
+			first.ID, second.ID,
+		)
+	}
+
+	var orderCount, itemCount, stock int
+
+	err = conn.QueryRow(
+		"SELECT COUNT(*) FROM orders WHERE user_id = $1",
+		userID,
+	).Scan(&orderCount)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = conn.QueryRow(
+		"SELECT COUNT(*) FROM order_items WHERE order_id = $1",
+		first.ID,
+	).Scan(&itemCount)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = conn.QueryRow(
+		"SELECT stock FROM products WHERE id = $1",
+		productID,
+	).Scan(&stock)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if orderCount != 1 {
+		t.Errorf("esperado 1 pedido, obtido %d", orderCount)
+	}
+	if itemCount != 1 {
+		t.Errorf("esperado 1 item, obtido %d", itemCount)
+	}
+	if stock != 0 {
+		t.Errorf("estoque esperado=0, obtido=%d", stock)
+	}
+}
+
+func TestCheckoutIdempotencyRejectsDifferentCart(t *testing.T) {
+	conn := db.SetupTestDB(t)
+
+	var userID, productID int
+
+	err := conn.QueryRow(
+		`INSERT INTO users (email, password)
+		 VALUES ($1, $2) RETURNING id`,
+		"checkout-conflict@example.invalid", "test-password",
+	).Scan(&userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = conn.QueryRow(
+		`INSERT INTO products (user_id, name, price, stock)
+		 VALUES ($1, $2, $3, $4) RETURNING id`,
+		userID, "Camiseta Volurya", 79.90, 5,
+	).Scan(&productID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	uc := NewPaymentUsecase(
+		repository.NewOrderRepository(conn),
+		repository.NewPaymentRepository(conn),
+		repository.NewProductRepository(conn),
+		nil,
+	)
+
+	const key = "checkout-conflict-key-001"
+	const email = "checkout-conflict@example.invalid"
+
+	first, reused, err := uc.CreateOrderForCheckoutIdempotent(
+		userID,
+		[]models.CheckoutItemInput{
+			{ProductID: productID, Quantity: 2},
+		},
+		key,
+		email,
+	)
+	if err != nil {
+		t.Fatalf("primeiro checkout: %v", err)
+	}
+	if reused {
+		t.Fatal("primeiro pedido foi marcado como reutilizado")
+	}
+
+	_, _, err = uc.CreateOrderForCheckoutIdempotent(
+		userID,
+		[]models.CheckoutItemInput{
+			{ProductID: productID, Quantity: 3},
+		},
+		key,
+		email,
+	)
+	if !errors.Is(err, repository.ErrCheckoutIdempotencyConflict) {
+		t.Fatalf(
+			"esperado conflito de idempotência, recebido: %v",
+			err,
+		)
+	}
+
+	var count, stock, quantity int
+
+	err = conn.QueryRow(
+		"SELECT COUNT(*) FROM orders WHERE user_id = $1",
+		userID,
+	).Scan(&count)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = conn.QueryRow(
+		"SELECT stock FROM products WHERE id = $1",
+		productID,
+	).Scan(&stock)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = conn.QueryRow(
+		`SELECT quantity FROM order_items
+		 WHERE order_id = $1 AND product_id = $2`,
+		first.ID, productID,
+	).Scan(&quantity)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if count != 1 {
+		t.Errorf("esperado 1 pedido, obtido %d", count)
+	}
+	if stock != 3 {
+		t.Errorf("estoque esperado=3, obtido=%d", stock)
+	}
+	if quantity != 2 {
+		t.Errorf("quantidade original esperada=2, obtida=%d", quantity)
+	}
+}
+
+func TestConcurrentIdempotentCheckoutReservesStockOnce(t *testing.T) {
+	conn := db.SetupTestDB(t)
+
+	var userID, productID int
+
+	err := conn.QueryRow(
+		`INSERT INTO users (email, password)
+		 VALUES ($1, $2) RETURNING id`,
+		"concurrent-idempotency@example.invalid",
+		"test-password",
+	).Scan(&userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = conn.QueryRow(
+		`INSERT INTO products (user_id, name, price, stock)
+		 VALUES ($1, $2, $3, $4) RETURNING id`,
+		userID, "Camiseta Volurya", 79.90, 5,
+	).Scan(&productID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	uc := NewPaymentUsecase(
+		repository.NewOrderRepository(conn),
+		repository.NewPaymentRepository(conn),
+		repository.NewProductRepository(conn),
+		nil,
+	)
+
+	type result struct {
+		orderID int
+		reused  bool
+		err     error
+	}
+
+	const key = "checkout-concurrent-key-001"
+	const email = "concurrent-idempotency@example.invalid"
+
+	start := make(chan struct{})
+	results := make(chan result, 2)
+
+	for i := 0; i < 2; i++ {
+		go func() {
+			<-start
+
+			order, reused, err := uc.CreateOrderForCheckoutIdempotent(
+				userID,
+				[]models.CheckoutItemInput{
+					{ProductID: productID, Quantity: 2},
+				},
+				key,
+				email,
+			)
+
+			res := result{reused: reused, err: err}
+			if order != nil {
+				res.orderID = order.ID
+			}
+			results <- res
+		}()
+	}
+
+	close(start)
+
+	first := <-results
+	second := <-results
+
+	if first.err != nil {
+		t.Fatalf("primeira resposta: %v", first.err)
+	}
+	if second.err != nil {
+		t.Fatalf("segunda resposta: %v", second.err)
+	}
+
+	if first.orderID <= 0 || first.orderID != second.orderID {
+		t.Fatalf(
+			"pedidos diferentes: %d e %d",
+			first.orderID,
+			second.orderID,
+		)
+	}
+
+	if first.reused == second.reused {
+		t.Errorf(
+			"esperado um pedido novo e um reutilizado: %v, %v",
+			first.reused,
+			second.reused,
+		)
+	}
+
+	var orderCount, itemCount, stock int
+
+	err = conn.QueryRow(
+		"SELECT COUNT(*) FROM orders WHERE user_id = $1",
+		userID,
+	).Scan(&orderCount)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = conn.QueryRow(
+		"SELECT COUNT(*) FROM order_items WHERE order_id = $1",
+		first.orderID,
+	).Scan(&itemCount)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = conn.QueryRow(
+		"SELECT stock FROM products WHERE id = $1",
+		productID,
+	).Scan(&stock)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if orderCount != 1 {
+		t.Errorf("esperado 1 pedido, obtido %d", orderCount)
+	}
+	if itemCount != 1 {
+		t.Errorf("esperado 1 item, obtido %d", itemCount)
+	}
+	if stock != 3 {
+		t.Errorf("estoque esperado=3, obtido=%d", stock)
+	}
+}

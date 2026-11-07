@@ -32,6 +32,10 @@ func (ou *OrderUsecase) CreateOrder(userID int, productID int, quantity int) (st
 		return "", fmt.Errorf("product not found: %w", err)
 	}
 
+	if product.SalesType != models.SalesTypeStandard {
+		return "", ErrPreorderCheckout
+	}
+
 	if product.Stock < quantity {
 		return "", fmt.Errorf("%w: requested %d, available %d",
 			ErrInsufficientStock, quantity, product.Stock)

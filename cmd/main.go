@@ -71,10 +71,19 @@ func main() {
 	// Rotas de páginas
 	router.GET("/", func(c *gin.Context) { c.HTML(200, "index.html", gin.H{}) })
 	router.GET("/store", func(c *gin.Context) {
-		c.HTML(200, "store.html", gin.H{"title": "VOLURYA SHOP - Produtos Oficiais"})
+		sales := config.GetPublicSalesConfig()
+
+		c.HTML(http.StatusOK, "store.html", gin.H{
+			"title":            "VOLURYA SHOP - Produtos Oficiais",
+			"salesWhatsAppURL": sales.SalesWhatsAppURL,
+			"salesMode":        sales.SalesMode,
+			"cartAvailable":    config.CartAvailable(),
+		})
 	})
 	router.GET("/about", func(c *gin.Context) { c.HTML(200, "about.html", gin.H{}) })
-	router.GET("/cart", func(c *gin.Context) { c.HTML(200, "cart.html", gin.H{}) })
+	router.GET("/cart", config.CartPageGuard, func(c *gin.Context) {
+		c.HTML(http.StatusOK, "cart.html", gin.H{})
+	})
 	router.GET("/login", func(c *gin.Context) { c.HTML(200, "login.html", gin.H{}) })
 	router.GET("/signup", func(c *gin.Context) { c.HTML(200, "signup.html", gin.H{}) })
 
@@ -174,17 +183,17 @@ func main() {
 	healthController := controller.NewHealthController(dbConnection)
 	paymentController := controller.NewPaymentController(paymentUsecase)
 
-    // Pagamentos desabilitados por padrão.
-    paymentsEnabled := os.Getenv("PAYMENTS_ENABLED") == "true"
-    paymentGate := func(c *gin.Context) {
-        if !paymentsEnabled {
-            c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
-                "error": "payments temporarily unavailable",
-            })
-            return
-        }
-        c.Next()
-    }
+	// Pagamentos desabilitados por padrão.
+	paymentsEnabled := os.Getenv("PAYMENTS_ENABLED") == "true"
+	paymentGate := func(c *gin.Context) {
+		if !paymentsEnabled {
+			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
+				"error": "payments temporarily unavailable",
+			})
+			return
+		}
+		c.Next()
+	}
 
 	// Rate limiters
 	authLimiter := middleware.NewRateLimiter(5, 1*time.Minute)
@@ -194,8 +203,13 @@ func main() {
 	public := router.Group("/api")
 	{
 		public.GET("/config", func(c *gin.Context) {
+			sales := config.GetPublicSalesConfig()
+
 			c.JSON(http.StatusOK, gin.H{
-				"publishable_key": config.GetStripePublishableKey(),
+				"publishable_key":    config.GetStripePublishableKey(),
+				"sales_mode":         sales.SalesMode,
+				"sales_whatsapp_url": sales.SalesWhatsAppURL,
+				"payments_enabled":   sales.PaymentsEnabled,
 			})
 		})
 		public.POST("/signup", authLimiter.Middleware(), authController.Signup)
@@ -203,6 +217,9 @@ func main() {
 		public.POST("/refresh", refreshLimiter.Middleware(), authController.RefreshToken)
 		public.POST("/logout", authController.Logout)
 		public.GET("/health", healthController.Health)
+		// Catálogo público: somente leitura.
+		public.GET("/products", productController.GetProducts)
+		public.GET("/products/:productId", productController.GetProductById)
 		public.POST("/webhook", paymentGate, paymentController.Webhook)
 	}
 
@@ -217,9 +234,7 @@ func main() {
 	protected := router.Group("/api")
 	protected.Use(auth.Middleware())
 	{
-		// Produtos
-		protected.GET("/products", productController.GetProducts)
-		protected.GET("/products/:productId", productController.GetProductById)
+		// Produtos: leitura pública; escrita restrita a administradores.
 
 		// Produtos — admin only
 		adminProduct := protected.Group("/products")
@@ -229,14 +244,14 @@ func main() {
 			adminProduct.PUT("/:productId", productController.UpdateProduct)
 			adminProduct.DELETE("/:productId", productController.Delete)
 			adminProduct.POST("/:productId/image", func(c *gin.Context) {
-					if r2Storage == nil {
-						c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
-							"error": "image uploads temporarily unavailable",
-						})
-						return
-					}
-					productController.UploadImage(c)
-				})
+				if r2Storage == nil {
+					c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
+						"error": "image uploads temporarily unavailable",
+					})
+					return
+				}
+				productController.UploadImage(c)
+			})
 		}
 
 		// Checkout — protegido

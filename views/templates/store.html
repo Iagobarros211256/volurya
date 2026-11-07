@@ -23,8 +23,8 @@
         <ul class="navbar-nav me-auto mb-2">
           <li class="nav-item"><a class="btn btn-outline-danger btn-sm my-2 nav-link" href="/">HOME</a></li>
           <li class="nav-item"><a class="btn btn-outline-danger btn-sm my-2 nav-link" href="/about">ABOUT</a></li>
-          <li class="nav-item"><a class="btn btn-outline-danger btn-sm my-2 nav-link" href="#musicsection">MUSIC</a></li>
-          <li class="nav-item"><a class="btn btn-outline-danger btn-sm my-2 nav-link" href="#socialsection">SOCIAL</a></li>
+          <li class="nav-item"><a class="btn btn-outline-danger btn-sm my-2 nav-link" href="/#musicsection">MUSIC</a></li>
+          <li class="nav-item"><a class="btn btn-outline-danger btn-sm my-2 nav-link" href="/#socialsection">SOCIAL</a></li>
           <li class="nav-item"><a class="btn btn-outline-danger btn-sm my-2 nav-link active" href="/store">STORE</a></li>
           <li class="nav-item"><a class="btn btn-outline-primary btn-sm my-2 nav-link" href="/login">Entrar</a></li>
         </ul>
@@ -51,7 +51,13 @@
       <div class="col d-none d-xl-block"><div class="skeleton-card"><div class="skeleton skeleton-img"></div><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-text"></div><div class="skeleton skeleton-text-short"></div><div class="skeleton skeleton-price"></div><div class="skeleton skeleton-btn"></div></div></div>
     </div>
 
-    <div id="store-items" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4"></div>
+    <div
+      id="store-items"
+      class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4"
+      data-sales-whatsapp-url="{{.salesWhatsAppURL}}"
+      data-sales-mode="{{.salesMode}}"
+      data-cart-available="{{.cartAvailable}}"
+    ></div>
 
     <div id="no-products" class="text-center my-5 d-none">
       <p class="fs-4 text-muted">Nenhum produto disponível no momento.<br>Volte em breve!</p>
@@ -75,33 +81,3 @@
   <script src="/static/js/store.js"></script>
 </body>
 </html>
-
-
-<!--
-
-Links sociais com href="#"
-html<a href="#" class="fa fa-facebook mx-2"></a>
-Mesmo problema recorrente em todos os templates. Adicione aria-label e URLs reais.
-
-🟡 Ícones sociais sem aria-label e sem texto
-html<a href="#" class="fa fa-facebook mx-2"></a>
-Elementos <a> sem texto visível nem aria-label são invisíveis para leitores de tela — inacessíveis:
-html<a href="#" class="fa fa-facebook mx-2" aria-label="Facebook da Volurya"></a>
-
-🟡 Footer simplificado vs footer completo nos outros templates
-about.html e cart.html têm footer completo com logo, links rápidos e copyright estilizado. Este tem apenas ícones e copyright simples — inconsistência visual entre páginas.
-
-🟡 Link #musicsection aponta para seção que não existe nesta página
-html<a href="#musicsection">MUSIC</a>
-musicsection só existe em index.html. Na store.html esse link não leva a lugar nenhum útil — deveria apontar para /#musicsection.
-
-🟢 Navbar duplicada
-Sétima cópia da mesma navbar — já apontado em todos os outros templates. Go templates partials resolveriam isso.
-
-🟢 text-center no <body>
-html<body class="bg-dark text-center text-light">
-text-center no body afeta todo o conteúdo por padrão — pode causar alinhamento inesperado em elementos que deveriam ser alinhados à esquerda. Aplique apenas onde necessário.
-
-
-
--->

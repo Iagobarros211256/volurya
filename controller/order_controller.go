@@ -38,6 +38,12 @@ func (oc *OrderController) CreateOrder(c *gin.Context) {
 
 	paymentURL, err := oc.orderUsecase.CreateOrder(userID, req.ProductID, req.Quantity)
 	if err != nil {
+		if errors.Is(err, usecase.ErrPreorderCheckout) {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "product available only through assisted preorder",
+			})
+			return
+		}
 		if errors.Is(err, usecase.ErrInsufficientStock) {
 			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 			return

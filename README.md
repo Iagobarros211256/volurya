@@ -15,6 +15,7 @@ Personal learning project / showcase built to practice real-world backend concep
 ![Badge](https://img.shields.io/badge/CI-GitHub_Actions-success?logo=githubactions&logoColor=white)
 
 ## 📚 Documentação
+- **[Pré-venda pelo WhatsApp](./docs/PREVENDA-WHATSAPP.md)** — Estado da implementação e pendências
 
 - **[PRD](./docs/volurya-prd.md)** — Requisitos de produto e escopo
 - **[Tech Spec](./docs/volurya-tech-spec.md)** — Arquitetura técnica e decisões
@@ -438,14 +439,14 @@ Crie um arquivo `.env` na raiz:
 ```env
 APP_ENV=development
 
-JWT_SECRET=sua_chave_secreta_minimo_32_chars
+JWT_SECRET=CHANGE_ME_GENERATE_RANDOM_SECRET
 ACCESS_TOKEN_DURATION_MINUTES=15
 REFRESH_TOKEN_DURATION_DAYS=7
 
 POSTGRES_HOST=volurya_postgres
 POSTGRES_PORT=5432
 POSTGRES_USER=volurya
-POSTGRES_PASSWORD=sua_senha_postgres
+POSTGRES_PASSWORD=CHANGE_ME_SET_STRONG_PASSWORD
 POSTGRES_DB=volurya_db
 
 STRIPE_SECRET_KEY=sk_test_sua_chave
@@ -453,7 +454,7 @@ STRIPE_PUBLISHABLE_KEY=pk_test_sua_chave
 STRIPE_WEBHOOK_SECRET=whsec_seu_secret
 
 R2_ACCESS_KEY_ID=sua_chave_r2
-R2_SECRET_ACCESS_KEY=seu_secret_r2
+R2_SECRET_ACCESS_KEY=CHANGE_ME_SET_R2_SECRET_KEY
 R2_ACCOUNT_ID=seu_account_id
 R2_BUCKET_NAME=nome_do_bucket
 R2_PUBLIC_URL=https://seu-bucket.r2.dev

@@ -205,16 +205,42 @@ async function setupNavbar() {
 
   const loggedIn = await isLoggedIn();
 
+  // Em caso de falha, não anunciar um checkout não verificado.
+  let cartAvailable = false;
+  try {
+    const response = await fetch('/api/config', {
+      credentials: 'same-origin'
+    });
+    if (response.ok) {
+      const settings = await response.json();
+      cartAvailable =
+        settings.sales_mode !== 'whatsapp' &&
+        settings.payments_enabled === true;
+    }
+  } catch {
+    cartAvailable = false;
+  }
+
   navLists.forEach(nav => {
     const loginLink = nav.querySelector('a[href="/login"]');
     if (loginLink) {
       loginLink.addEventListener('click', () => rememberCurrentPage());
     }
-    ensureCartLink(nav);
+
+    if (cartAvailable) {
+      ensureCartLink(nav);
+    } else {
+      nav.querySelectorAll('a[href="/cart"]').forEach(link => {
+        link.closest('li')?.remove();
+      });
+    }
+
     syncAuthNav(nav, loggedIn);
   });
 
-  updateCartBadge();
+  if (cartAvailable) {
+    updateCartBadge();
+  }
 }
 
 function ensureCartLink(nav) {

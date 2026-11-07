@@ -29,11 +29,11 @@ func (pr *ProductRepository) GetProducts(limit int, cursor *int) ([]models.Produ
 	var args []any
 
 	if cursor != nil {
-		query = `SELECT id, user_id, name, description, price, stock, COALESCE(image_url, '')
+		query = `SELECT id, user_id, name, COALESCE(description, ''), price, stock, COALESCE(image_url, ''), sales_type
 				 FROM products WHERE id > $1 ORDER BY id ASC LIMIT $2`
 		args = []any{*cursor, limit + 1}
 	} else {
-		query = `SELECT id, user_id, name, description, price, stock, COALESCE(image_url, '')
+		query = `SELECT id, user_id, name, COALESCE(description, ''), price, stock, COALESCE(image_url, ''), sales_type
 				 FROM products ORDER BY id ASC LIMIT $1`
 		args = []any{limit + 1}
 	}
@@ -56,6 +56,7 @@ func (pr *ProductRepository) GetProducts(limit int, cursor *int) ([]models.Produ
 			&p.Price,
 			&p.Stock,
 			&p.ImageURL,
+			&p.SalesType,
 		); err != nil {
 			return nil, false, fmt.Errorf("scan failed: %w", err)
 		}
@@ -69,6 +70,21 @@ func (pr *ProductRepository) GetProducts(limit int, cursor *int) ([]models.Produ
 	hasMore := len(products) > limit
 	if hasMore {
 		products = products[:limit]
+	}
+
+	// Busca variantes apenas dos produtos da página atual.
+	productIDs := make([]int, 0, len(products))
+	for _, product := range products {
+		productIDs = append(productIDs, product.ID)
+	}
+
+	variantsByProduct, err := pr.GetVariantsByProductIDs(productIDs)
+	if err != nil {
+		return nil, false, fmt.Errorf("load product variants: %w", err)
+	}
+
+	for i := range products {
+		products[i].Variants = variantsByProduct[products[i].ID]
 	}
 
 	return products, hasMore, nil
@@ -90,12 +106,12 @@ func (pr *ProductRepository) CreateProduct(product models.Product, userID int) (
 func (pr *ProductRepository) GetProductById(id int) (*models.Product, error) {
 	var p models.Product
 	err := pr.db.QueryRow(
-		`SELECT id, user_id, name, COALESCE(description, ''), price, stock, COALESCE(image_url, '')
+		`SELECT id, user_id, name, COALESCE(description, ''), price, stock, COALESCE(image_url, ''), sales_type
 		 FROM products WHERE id = $1`,
 		id,
 	).Scan(
 		&p.ID, &p.UserID, &p.Name, &p.Description,
-		&p.Price, &p.Stock, &p.ImageURL,
+		&p.Price, &p.Stock, &p.ImageURL, &p.SalesType,
 	)
 	if err == sql.ErrNoRows {
 		return nil, ErrProductNotFound
@@ -103,6 +119,13 @@ func (pr *ProductRepository) GetProductById(id int) (*models.Product, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get product %d failed: %w", id, err)
 	}
+	variantsByProduct, err := pr.GetVariantsByProductIDs([]int{id})
+	if err != nil {
+		return nil, fmt.Errorf("load product %d variants: %w", id, err)
+	}
+
+	p.Variants = variantsByProduct[id]
+
 	return &p, nil
 }
 
@@ -166,7 +189,7 @@ func (pr *ProductRepository) DecrementStock(productID, quantity int) error {
 	result, err := pr.db.Exec(
 		`UPDATE products
 		 SET stock = stock - $1
-		 WHERE id = $2 AND stock >= $1`,
+		 WHERE id = $2 AND stock >= $1 AND sales_type = 'standard'`,
 		quantity, productID,
 	)
 	if err != nil {

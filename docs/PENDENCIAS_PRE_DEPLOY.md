@@ -39,12 +39,34 @@ e validar as pendências críticas.
       e tratamento de dados sensíveis antes de
       considerar o e-commerce integralmente validado.
 
+## Validação mobile — antes da publicação
+
+- [ ] Testar larguras de tela de 320, 360, 390 e 430 px.
+- [ ] Testar também orientação horizontal e tablets.
+- [ ] Verificar menus, cabeçalho, rodapé e navegação por toque.
+- [ ] Conferir responsividade dos cards, imagens e páginas de produtos.
+- [ ] Garantir ausência de rolagem horizontal indesejada.
+- [ ] Verificar legibilidade, contraste e tamanho dos elementos clicáveis.
+- [ ] Testar formulários, teclado virtual e mensagens de erro.
+- [ ] Verificar carrinho e apresentação do checkout desabilitado.
+- [ ] Testar carregamento e comportamento em conexão móvel lenta.
+- [ ] Validar em dispositivo Android/Chrome e iPhone/Safari,
+      quando disponíveis.
+- [ ] Registrar problemas com captura de tela, dispositivo,
+      navegador, dimensão da tela e passos para reprodução.
+- [ ] Corrigir problemas que impeçam a navegação antes de
+      considerar a experiência mobile validada.
+
+A simulação responsiva no navegador ajuda a encontrar problemas,
+mas não substitui completamente testes em dispositivos físicos.
+
 ## Situação atual
 
 - PostgreSQL de integração: testado.
 - Migrations no banco financeiro isolado: testadas.
-- Transação de checkout: implementação local iniciada.
-- Teste de rollback: ainda não validado.
+- Transação de checkout: testes no PostgreSQL isolado aprovados.
+- Rollback financeiro: cenários de integração local aprovados.
+- Validação mobile: pendente.
 - Pagamentos reais: não validados para produção.
 - VPS StayCloud: deploy da aplicação pendente.
 

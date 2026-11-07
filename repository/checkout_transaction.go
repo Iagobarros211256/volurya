@@ -59,7 +59,7 @@ func (r *OrderRepository) CreateCheckoutOrder(
 		result, err := tx.Exec(
 			`UPDATE products
 			 SET stock = stock - $1
-			 WHERE id = $2 AND stock >= $1`,
+			 WHERE id = $2 AND stock >= $1 AND sales_type = 'standard'`,
 			item.Quantity, item.ProductID,
 		)
 		if err != nil {

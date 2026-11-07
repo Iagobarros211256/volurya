@@ -59,14 +59,27 @@ func (p *ProductController) GetProducts(ctx *gin.Context) {
 		p.productUsecase.GetProducts(strconv.Itoa(limit), cursor)
 
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
+		if err.Error() == "invalid limit" || err.Error() == "invalid cursor" {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": "parâmetros de paginação inválidos",
+			})
+			return
+		}
+
+		slog.Error("falha ao listar produtos", "error", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": "erro interno ao consultar catálogo",
 		})
 		return
 	}
 
+	publicProducts := make([]models.PublicProduct, 0, len(products))
+	for _, product := range products {
+		publicProducts = append(publicProducts, models.ToPublicProduct(product))
+	}
+
 	ctx.JSON(http.StatusOK, gin.H{
-		"data": products,
+		"data": publicProducts,
 		"pagination": gin.H{
 			"next_cursor": nextCursor,
 			"has_more":    hasMore,
@@ -116,8 +129,17 @@ func (p *ProductController) GetProductById(ctx *gin.Context) {
 	}
 
 	product, err := p.productUsecase.GetProductById(productId)
+	if errors.Is(err, repository.ErrProductNotFound) {
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"error": "produto não encontrado",
+		})
+		return
+	}
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		slog.Error("falha ao consultar produto", "error", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": "erro interno ao consultar produto",
+		})
 		return
 	}
 
@@ -129,7 +151,7 @@ func (p *ProductController) GetProductById(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, product)
+	ctx.JSON(http.StatusOK, models.ToPublicProduct(*product))
 }
 
 func (p *ProductController) UpdateProduct(ctx *gin.Context) {

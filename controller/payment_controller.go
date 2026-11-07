@@ -51,6 +51,12 @@ func (pc *PaymentController) Checkout(c *gin.Context) {
 	orderDetail, err := pc.paymentUsecase.CreateOrderForCheckout(userID, req.Items)
 	if err != nil {
 		slog.Error("failed to create order", "error", err, "user_id", userID)
+		if errors.Is(err, usecase.ErrPreorderCheckout) {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "product available only through assisted preorder",
+			})
+			return
+		}
 		if errors.Is(err, usecase.ErrInsufficientStock) {
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "insufficient stock"})
 			return

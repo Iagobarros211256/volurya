@@ -49,6 +49,10 @@ func (pu *PaymentUsecase) CreateOrderForCheckout(
 			return nil, fmt.Errorf("product %d not found: %w", item.ProductID, err)
 		}
 
+		if product.SalesType != models.SalesTypeStandard {
+			return nil, ErrPreorderCheckout
+		}
+
 		if product.Stock < item.Quantity {
 			return nil, fmt.Errorf("%w: product %d requested %d available %d",
 				ErrInsufficientStock, item.ProductID, item.Quantity, product.Stock)

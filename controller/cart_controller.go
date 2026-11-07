@@ -3,6 +3,7 @@ package controller
 import (
 	"api/notifications"
 	"api/usecase"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -55,6 +56,12 @@ func (cc *CartController) AddItem(c *gin.Context) {
 
 	item, err := cc.cartUsecase.AddItem(userID, body.ProductID, body.Quantity)
 	if err != nil {
+		if errors.Is(err, usecase.ErrPreorderCheckout) {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "product available only through assisted preorder",
+			})
+			return
+		}
 		// Erros internos vazando para o cliente
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -94,6 +101,12 @@ func (cc *CartController) UpdateItem(c *gin.Context) {
 
 	item, err := cc.cartUsecase.UpdateItem(userID, itemID, body.Quantity)
 	if err != nil {
+		if errors.Is(err, usecase.ErrPreorderCheckout) {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "product available only through assisted preorder",
+			})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -132,6 +145,12 @@ func (cc *CartController) Checkout(c *gin.Context) {
 	// ou criar um CheckoutUsecase dedicado que orquestra os dois.
 	paymentURLs, err := cc.cartUsecase.Checkout(userID, cc.orderUsecase)
 	if err != nil {
+		if errors.Is(err, usecase.ErrPreorderCheckout) {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": "product available only through assisted preorder",
+			})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
