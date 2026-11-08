@@ -64,10 +64,11 @@ type PaymentRecord struct {
 
 // CheckoutRequest represents the request to create a checkout
 type CheckoutRequest struct {
-	UserEmail  string              `json:"user_email"`
-	Items      []CheckoutItemInput `json:"items" binding:"required,min=1"`
-	SuccessURL string              `json:"success_url,omitempty"`
-	CancelURL  string              `json:"cancel_url,omitempty"`
+	IdempotencyKey string              `json:"idempotency_key" binding:"required,max=128"`
+	UserEmail      string              `json:"user_email"`
+	Items          []CheckoutItemInput `json:"items" binding:"required,min=1"`
+	SuccessURL     string              `json:"success_url,omitempty"`
+	CancelURL      string              `json:"cancel_url,omitempty"`
 }
 
 // CheckoutItemInput represents an item in the checkout request

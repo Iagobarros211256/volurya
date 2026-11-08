@@ -3,7 +3,10 @@ package controller
 import (
 	"api/config"
 	"api/models"
+	"api/repository"
 	"api/usecase"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -11,6 +14,7 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stripe/stripe-go/v76"
@@ -18,12 +22,37 @@ import (
 	"github.com/stripe/stripe-go/v76/webhook"
 )
 
+// paymentIntentGateway permite testar o checkout sem chamadas reais ao Stripe.
+type paymentIntentGateway interface {
+	Create(*stripe.PaymentIntentParams) (*stripe.PaymentIntent, error)
+	Get(string, *stripe.PaymentIntentParams) (*stripe.PaymentIntent, error)
+}
+
+type stripePaymentIntentGateway struct{}
+
+func (stripePaymentIntentGateway) Create(
+	params *stripe.PaymentIntentParams,
+) (*stripe.PaymentIntent, error) {
+	return paymentintent.New(params)
+}
+
+func (stripePaymentIntentGateway) Get(
+	id string,
+	params *stripe.PaymentIntentParams,
+) (*stripe.PaymentIntent, error) {
+	return paymentintent.Get(id, params)
+}
+
 type PaymentController struct {
 	paymentUsecase *usecase.PaymentUsecase
+	paymentIntents paymentIntentGateway
 }
 
 func NewPaymentController(paymentUsecase *usecase.PaymentUsecase) *PaymentController {
-	return &PaymentController{paymentUsecase: paymentUsecase}
+	return &PaymentController{
+		paymentUsecase: paymentUsecase,
+		paymentIntents: stripePaymentIntentGateway{},
+	}
 }
 
 func (pc *PaymentController) Checkout(c *gin.Context) {
@@ -42,13 +71,24 @@ func (pc *PaymentController) Checkout(c *gin.Context) {
 		return
 	}
 
+	// Mantém a mesma representação do e-mail no fingerprint,
+	// no Stripe e no registro financeiro.
+	req.UserEmail = strings.ToLower(strings.TrimSpace(req.UserEmail))
+
 	if len(req.Items) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cart is empty"})
 		return
 	}
 
-	// Criar ordem
-	orderDetail, err := pc.paymentUsecase.CreateOrderForCheckout(userID, req.Items)
+	if strings.TrimSpace(req.IdempotencyKey) != req.IdempotencyKey {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid idempotency key"})
+		return
+	}
+
+	// Cria ou recupera o pedido usando a chave da tentativa.
+	orderDetail, reused, err := pc.paymentUsecase.CreateOrderForCheckoutIdempotent(
+		userID, req.Items, req.IdempotencyKey, req.UserEmail,
+	)
 	if err != nil {
 		slog.Error("failed to create order", "error", err, "user_id", userID)
 		if errors.Is(err, usecase.ErrPreorderCheckout) {
@@ -57,11 +97,21 @@ func (pc *PaymentController) Checkout(c *gin.Context) {
 			})
 			return
 		}
-		if errors.Is(err, usecase.ErrInsufficientStock) {
+		if errors.Is(err, repository.ErrCheckoutIdempotencyConflict) {
+			c.JSON(http.StatusConflict, gin.H{"error": "idempotency key conflict"})
+			return
+		}
+		if errors.Is(err, usecase.ErrInsufficientStock) ||
+			errors.Is(err, repository.ErrCheckoutInsufficientStock) {
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "insufficient stock"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create order"})
+		return
+	}
+
+	if reused && orderDetail.Status != models.OrderStatusPending {
+		c.JSON(http.StatusConflict, gin.H{"error": "checkout is no longer pending"})
 		return
 	}
 
@@ -79,14 +129,26 @@ func (pc *PaymentController) Checkout(c *gin.Context) {
 		params.ReceiptEmail = stripe.String(req.UserEmail)
 	}
 
-	pi, err := paymentintent.New(params)
-	if err != nil {
-		slog.Error("failed to create payment intent", "error", err, "order_id", orderDetail.ID)
-		// Cancelar ordem órfã
-		if cancelErr := pc.paymentUsecase.CancelOrder(orderDetail.ID); cancelErr != nil {
-			slog.Error("failed to cancel orphan order", "error", cancelErr, "order_id", orderDetail.ID)
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create payment intent"})
+	// A mesma tentativa utiliza a mesma chave no PostgreSQL e no Stripe.
+	keyHash := sha256.Sum256([]byte(strconv.Itoa(userID) + ":" + req.IdempotencyKey))
+	params.IdempotencyKey = stripe.String(
+		"volurya-checkout-" + hex.EncodeToString(keyHash[:]),
+	)
+
+	var pi *stripe.PaymentIntent
+	if reused && orderDetail.PaymentIntentID != "" {
+		// O pagamento já foi vinculado ao pedido.
+		pi, err = pc.paymentIntents.Get(orderDetail.PaymentIntentID, nil)
+	} else {
+		// Repetições sem vínculo persistido reutilizam a chave no Stripe.
+		pi, err = pc.paymentIntents.Create(params)
+	}
+	if err != nil || pi == nil || pi.ID == "" {
+		// Não cancelar automaticamente: uma falha de rede pode ocorrer
+		// depois de o Stripe aceitar a criação do PaymentIntent.
+		slog.Error("failed to obtain payment intent", "error", err,
+			"order_id", orderDetail.ID)
+		c.JSON(http.StatusBadGateway, gin.H{"error": "payment service unavailable"})
 		return
 	}
 
@@ -116,7 +178,12 @@ func (pc *PaymentController) Checkout(c *gin.Context) {
 		"user_id", userID,
 	)
 
-	c.JSON(http.StatusCreated, models.CheckoutResponse{
+	responseStatus := http.StatusCreated
+	if reused {
+		responseStatus = http.StatusOK
+	}
+
+	c.JSON(responseStatus, models.CheckoutResponse{
 		OrderID:         orderDetail.ID,
 		ClientSecret:    pi.ClientSecret,
 		PaymentIntentID: pi.ID,

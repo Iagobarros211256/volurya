@@ -183,6 +183,53 @@ async function removeItem(itemId) {
   }
 }
 
+function checkoutIdempotencyKey(items, userEmail) {
+  const storageKey = 'volurya-checkout-attempt-v1';
+
+  const normalizedItems = items.map(item => ({
+    product_id: Number(item.product_id),
+    quantity: Number(item.quantity)
+  })).sort((a, b) =>
+    a.product_id - b.product_id || a.quantity - b.quantity
+  );
+
+  const fingerprint = JSON.stringify({
+    items: normalizedItems,
+    email: (userEmail || '').trim().toLowerCase()
+  });
+
+  const saved = sessionStorage.getItem(storageKey);
+
+  if (saved) {
+    try {
+      const attempt = JSON.parse(saved);
+      if (
+        attempt.fingerprint === fingerprint &&
+        typeof attempt.key === 'string' &&
+        /^volurya-[0-9a-f-]{36}$/.test(attempt.key)
+      ) {
+        return attempt.key;
+      }
+    } catch {
+      // Registro inválido: gerar nova tentativa segura.
+    }
+  }
+
+  if (!window.crypto ||
+      typeof window.crypto.randomUUID !== 'function') {
+    throw new Error('Gerador seguro de chave indisponível');
+  }
+
+  const key = `volurya-${window.crypto.randomUUID()}`;
+
+  sessionStorage.setItem(storageKey, JSON.stringify({
+    fingerprint,
+    key
+  }));
+
+  return key;
+}
+
 async function checkout() {
   const btn = document.getElementById('checkout-btn');
   btn.disabled = true;
@@ -216,13 +263,16 @@ async function checkout() {
       return;
     }
 
+    const checkoutKey = checkoutIdempotencyKey(items, userEmail);
+
     // Cria payment intent no backend
     const res = await fetch(`${API_BASE}/checkout`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         items,
-        user_email: userEmail
+        user_email: userEmail,
+        idempotency_key: checkoutKey
       })
     });
 
