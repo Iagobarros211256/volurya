@@ -385,3 +385,52 @@ body.vol-body { margin: 0; color: var(--vol-paper); background: var(--vol-black)
   color: #c1c1c1;
   opacity: 1;
 }
+
+/* Loja: identidade visual do contato comercial */
+.vol-store-page .store-product-card .btn-success {
+  background: var(--vol-red);
+  border-color: var(--vol-red);
+  color: #fff;
+}
+
+.vol-store-page .store-product-card .btn-success:hover:not(.disabled) {
+  background: var(--vol-red-bright);
+  border-color: var(--vol-red-bright);
+}
+
+.vol-store-page .store-product-card .btn-success:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+/* Produto único: destaque sem alterar a grade de múltiplos produtos */
+.vol-store-page #store-items:has(> .col:only-child) > .col {
+  flex: 0 0 100%;
+  width: 100%;
+  max-width: none;
+}
+
+.vol-store-page #store-items:has(> .col:only-child) .store-product-image {
+  height: clamp(280px, 65vw, 520px);
+  object-fit: contain;
+  background: #101012;
+}
+
+@media (min-width: 992px) {
+  .vol-store-page #store-items:has(> .col:only-child) .store-product-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
+    align-items: stretch;
+  }
+
+  .vol-store-page #store-items:has(> .col:only-child) .store-product-image {
+    height: 100%;
+    min-height: 440px;
+    max-height: 540px;
+  }
+
+  .vol-store-page #store-items:has(> .col:only-child) .card-body {
+    justify-content: center;
+    padding: clamp(24px, 3vw, 48px);
+  }
+}
