@@ -14,6 +14,8 @@ var ErrCheckoutIdempotencyConflict = errors.New(
 	"checkout idempotency key reused with different request",
 )
 
+var ErrCheckoutPreorder = errors.New("checkout preorder not allowed")
+
 // CreateCheckoutOrderIdempotent cria um pedido com reserva de estoque,
 // ou recupera o pedido existente sem descontar estoque novamente.
 func (r *OrderRepository) CreateCheckoutOrderIdempotent(
@@ -93,16 +95,22 @@ func (r *OrderRepository) CreateCheckoutOrderIdempotent(
 
 		for _, item := range items {
 			var unitPrice float64
+			var salesType string
 
 			err = tx.QueryRowContext(ctx, `
-				SELECT price
+				SELECT price, sales_type
 				FROM products
 				WHERE id = $1
-			`, item.ProductID).Scan(&unitPrice)
+				FOR UPDATE
+			`, item.ProductID).Scan(&unitPrice, &salesType)
 			if err != nil {
 				return nil, false, fmt.Errorf(
 					"read product %d: %w", item.ProductID, err,
 				)
+			}
+
+			if salesType != models.SalesTypeStandard {
+				return nil, false, ErrCheckoutPreorder
 			}
 
 			result, err := tx.ExecContext(ctx, `

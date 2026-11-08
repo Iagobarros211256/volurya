@@ -2,9 +2,11 @@ package usecase
 
 import (
 	"api/models"
+	"api/repository"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -77,10 +79,14 @@ func (pu *PaymentUsecase) CreateOrderForCheckoutIdempotent(
 	hash := sha256.Sum256(encoded)
 	fingerprint := hex.EncodeToString(hash[:])
 
-	return pu.orderRepo.CreateCheckoutOrderIdempotent(
+	detail, reused, err := pu.orderRepo.CreateCheckoutOrderIdempotent(
 		userID,
 		items,
 		key,
 		fingerprint,
 	)
+	if errors.Is(err, repository.ErrCheckoutPreorder) {
+		return nil, false, ErrPreorderCheckout
+	}
+	return detail, reused, err
 }
