@@ -3,7 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>About - VOLURYA</title>
+  <title>A banda e galeria — VOLURYA</title>
+  <meta name="theme-color" content="#080808">
+  <meta name="description" content="Conheça a Volurya, banda de metal de Fortaleza, seus integrantes e a galeria de fotos.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
@@ -72,31 +77,40 @@
       text-shadow: 0 0 10px #ff0000;
     }
   </style>
+  <link rel="stylesheet" href="/static/css/volurya-redesign.css">
+  <link rel="stylesheet" href="/static/css/galeria-2026.css">
 </head>
-<body class="bg-dark text-light">
+<body class="bg-dark text-light vol-body vol-about-page">
 
-  <!-- Navbar -->
-  <nav class="navbar navbar-dark bg-dark">
-    <div class="container-fluid">
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample01" aria-controls="navbarsExample01" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarsExample01">
-        <ul class="navbar-nav me-auto mb-2">
-          <li class="nav-item"><a class="btn btn-outline-danger btn-sm my-2 nav-link" href="/">HOME</a></li>
-          <li class="nav-item"><a class="btn btn-outline-danger btn-sm my-2 nav-link active" href="/about">ABOUT</a></li>
-          <li class="nav-item"><a class="btn btn-outline-danger btn-sm my-2 nav-link" href="/#musicsection">MUSIC</a></li>
-          <li class="nav-item"><a class="btn btn-outline-danger btn-sm my-2 nav-link" href="/#socialsection">SOCIAL</a></li>
-          <li class="nav-item"><a class="btn btn-outline-danger btn-sm my-2 nav-link" href="/store">STORE</a></li>
-          <li class="nav-item"><a class="btn btn-outline-primary btn-sm my-2 nav-link" href="/login">Entrar</a></li>
-        </ul>
+  <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
+  <header class="vol-topbar">
+    <nav class="navbar navbar-expand-lg vol-nav" aria-label="Navegação principal">
+      <div class="container-fluid vol-wrap">
+        <a class="navbar-brand vol-brand" href="/" aria-label="Volurya — início"><img src="/static/imagens/VOLURYALOGOVAZADA.png" width="145" height="95" alt="Volurya"></a>
+        <button class="navbar-toggler vol-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#volMainMenu" aria-controls="volMainMenu" aria-expanded="false" aria-label="Abrir menu"><span class="vol-toggler-lines" aria-hidden="true"><span></span><span></span><span></span></span></button>
+        <div class="collapse navbar-collapse" id="volMainMenu">
+          <ul class="navbar-nav vol-links ms-auto align-items-lg-center">
+            <li class="nav-item"><a class="nav-link" href="/">Início</a></li>
+            <li class="nav-item"><a class="nav-link" href="/#musicsection">Música</a></li>
+            <li class="nav-item"><a class="nav-link active" aria-current="page" href="/about">A banda</a></li>
+            <li class="nav-item"><a class="nav-link" href="#gallery">Galeria</a></li>
+            <li class="nav-item"><a class="nav-link vol-store-link" href="/store">Loja ↗</a></li>
+            <li class="nav-item"><a class="nav-link vol-account-link" href="/login">Entrar</a></li>
+          </ul>
+        </div>
       </div>
-    </div>
-  </nav>
+    </nav>
+  </header>
+  <main id="conteudo">
 
-  <!-- Hero -->
-  <section class="hero d-flex justify-content-center align-items-center bg-dark">
-    <img src="/static/imagens/VOLURYALOGOVAZADA.png" class="hero-logo">
+
+  <!-- Identidade oficial, sem redesenhar o logotipo -->
+  <section class="vol-about-hero" aria-label="Volurya, metal de Fortaleza">
+    <div class="vol-wrap vol-about-hero-inner"><div>
+      <span class="vol-section-id">FORTALEZA / METAL INDEPENDENTE</span>
+      <img src="/static/imagens/VOLURYALOGOVAZADA.png" class="vol-about-hero-logo" alt="Volurya — logotipo oficial" width="500" height="380">
+      <h1>O PESO TEM <em>IDENTIDADE.</em></h1>
+    </div></div>
   </section>
 
   <!-- Bio PT -->
@@ -111,16 +125,9 @@
           na cultura nordestina.
         </p>
         <p class="text-light">
-          Fundada em [ANO], a banda rapidamente se destacou na cena local com apresentações 
-          intensas e uma proposta musical que desafia fronteiras. Com [N] anos de estrada, 
-          [N] álbuns e centenas de shows pelo Brasil, a VOLURYA continua evoluindo sem 
-          abrir mão de sua identidade.
+          Da composição aos palcos, a Volurya desenvolve sua identidade unindo intensidade, groove e expressão musical.
         </p>
-        <p class="text-light">
-          O nome VOLURYA representa [SIGNIFICADO DO NOME]. Cada música carrega uma história, 
-          cada riff carrega uma intenção. A banda acredita que o metal é mais do que um gênero 
-          — é uma forma de vida.
-        </p>
+
 
         <hr style="border-color: #ff000033; margin: 2rem 0;">
 
@@ -132,16 +139,9 @@
           in northeastern Brazilian culture.
         </p>
         <p class="text-light">
-          Founded in [YEAR], the band quickly stood out in the local scene 
-          with intense live performances and a musical vision that defies boundaries. 
-          With [N] years on the road, [N] albums and hundreds of shows across Brazil, 
-          VOLURYA keeps evolving without losing its identity.
+          From songwriting to the stage, Volurya brings together intensity, groove and musical expression.
         </p>
-        <p class="text-light">
-          The name VOLURYA represents [NAME MEANING]. Every song carries a story, 
-          every riff carries an intention. The band believes metal is more than a genre 
-          — it's a way of life.
-        </p>
+
       </div>
     </div>
   </div>
@@ -152,38 +152,38 @@
     <div class="row row-cols-2 row-cols-md-4 g-4 text-center">
 
       <div class="col">
-        <div class="member-card rounded p-3 bg-dark">
-          <img src="/static/imagens/VOLURYA - CENA ROCK-29-modified.png" class="rounded-circle img-fluid mb-3" style="max-width: 150px;">
+        <div class="member-card rounded p-3 bg-dark vol-member-card">
+          <img src="/static/imagens/VOLURYA - CENA ROCK-29-modified.png" alt="Carlos Heitor, integrante da Volurya" class="rounded-circle img-fluid mb-3" loading="lazy" style="max-width: 150px;">
           <h5 class="text-white">Carlos Heitor</h5>
           <p class="text-danger small mb-1">Guitars & Back Vocals</p>
-          <p class="text-muted small">[Bio curta do membro]</p>
+
         </div>
       </div>
 
       <div class="col">
-        <div class="member-card rounded p-3 bg-dark">
-          <img src="/static/imagens/VOLURYA - CENA ROCK-36 (1)-modified.png" class="rounded-circle img-fluid mb-3" style="max-width: 150px;">
+        <div class="member-card rounded p-3 bg-dark vol-member-card">
+          <img src="/static/imagens/VOLURYA - CENA ROCK-36 (1)-modified.png" alt="Iago Barros, integrante da Volurya" class="rounded-circle img-fluid mb-3" loading="lazy" style="max-width: 150px;">
           <h5 class="text-white">Iago Barros</h5>
           <p class="text-danger small mb-1">Drums & Percussion</p>
-          <p class="text-muted small">[Bio curta do membro]</p>
+
         </div>
       </div>
 
       <div class="col">
-        <div class="member-card rounded p-3 bg-dark">
-          <img src="/static/imagens/CENAROCKINES1-modified.png" class="rounded-circle img-fluid mb-3" style="max-width: 150px;">
+        <div class="member-card rounded p-3 bg-dark vol-member-card">
+          <img src="/static/imagens/CENAROCKINES1-modified.png" alt="Ines Ferreira, integrante da Volurya" class="rounded-circle img-fluid mb-3" loading="lazy" style="max-width: 150px;">
           <h5 class="text-white">Ines Ferreira</h5>
           <p class="text-danger small mb-1">Lead Vocals</p>
-          <p class="text-muted small">[Bio curta do membro]</p>
+
         </div>
       </div>
 
       <div class="col">
-        <div class="member-card rounded p-3 bg-dark">
-          <img src="/static/imagens/VOLURYA - CENA ROCK-14-modified.png" class="rounded-circle img-fluid mb-3" style="max-width: 150px;">
+        <div class="member-card rounded p-3 bg-dark vol-member-card">
+          <img src="/static/imagens/VOLURYA - CENA ROCK-14-modified.png" alt="Italo Ramon, integrante da Volurya" class="rounded-circle img-fluid mb-3" loading="lazy" style="max-width: 150px;">
           <h5 class="text-white">Italo Ramon</h5>
           <p class="text-danger small mb-1">Bass</p>
-          <p class="text-muted small">[Bio curta do membro]</p>
+
         </div>
       </div>
 
@@ -191,77 +191,237 @@
   </div>
 
   <!-- Galeria -->
-  <div class="container py-5">
-    <h2 class="text-danger section-title text-center mb-5">GALERIA / GALLERY</h2>
+  <div class="container-fluid py-5 vol-gallery-container">
+    <h2 class="text-danger section-title text-center mb-3">GALERIA / GALLERY</h2>
+    <p class="vol-gallery-summary">29 FOTOGRAFIAS <span aria-hidden="true">/</span> 3 VÍDEOS</p>
     <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3" id="gallery">
 
       <div class="col">
-        <img src="/static/imagens/VOLURYACENAROCK.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(0)">
+        <img src="/static/imagens/VOLURYACENAROCK.jpg" alt="Volurya em apresentação, foto 1" class="img-fluid rounded gallery-img w-100" loading="lazy" style="height: 200px; object-fit: cover;" role="button" tabindex="0" aria-label="Abrir foto 1 na galeria" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(0)}" onclick="openLightbox(0)">
       </div>
       <div class="col">
-        <img src="/static/imagens/VOLURYAAKITEMROCK.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(1)">
+        <img src="/static/imagens/VOLURYAAKITEMROCK.jpg" alt="Volurya em apresentação, foto 2" class="img-fluid rounded gallery-img w-100" loading="lazy" style="height: 200px; object-fit: cover;" role="button" tabindex="0" aria-label="Abrir foto 2 na galeria" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(1)}" onclick="openLightbox(1)">
       </div>
       <div class="col">
-        <img src="/static/imagens/CENAROCKINES1.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(2)">
+        <img src="/static/imagens/CENAROCKINES1.jpg" alt="Volurya em apresentação, foto 3" class="img-fluid rounded gallery-img w-100" loading="lazy" style="height: 200px; object-fit: cover;" role="button" tabindex="0" aria-label="Abrir foto 3 na galeria" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(2)}" onclick="openLightbox(2)">
       </div>
       <div class="col">
-        <img src="/static/imagens/CENAROCKINES2.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(3)">
+        <img src="/static/imagens/CENAROCKINES2.jpg" alt="Volurya em apresentação, foto 4" class="img-fluid rounded gallery-img w-100" loading="lazy" style="height: 200px; object-fit: cover;" role="button" tabindex="0" aria-label="Abrir foto 4 na galeria" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(3)}" onclick="openLightbox(3)">
       </div>
       <div class="col">
-        <img src="/static/imagens/HEITORGUITAR1.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(4)">
+        <img src="/static/imagens/HEITORGUITAR1.jpg" alt="Volurya em apresentação, foto 5" class="img-fluid rounded gallery-img w-100" loading="lazy" style="height: 200px; object-fit: cover;" role="button" tabindex="0" aria-label="Abrir foto 5 na galeria" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(4)}" onclick="openLightbox(4)">
       </div>
       <div class="col">
-        <img src="/static/imagens/dincifestvolruryabanda.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(5)">
+        <img src="/static/imagens/dincifestvolruryabanda.jpg" alt="Volurya em apresentação, foto 6" class="img-fluid rounded gallery-img w-100" loading="lazy" style="height: 200px; object-fit: cover;" role="button" tabindex="0" aria-label="Abrir foto 6 na galeria" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(5)}" onclick="openLightbox(5)">
       </div>
       <div class="col">
-        <img src="/static/imagens/VOLURYAESTUDIO.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(6)">
+        <img src="/static/imagens/VOLURYAESTUDIO.jpg" alt="Volurya em apresentação, foto 7" class="img-fluid rounded gallery-img w-100" loading="lazy" style="height: 200px; object-fit: cover;" role="button" tabindex="0" aria-label="Abrir foto 7 na galeria" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(6)}" onclick="openLightbox(6)">
       </div>
       <div class="col">
-        <img src="/static/imagens/VOLURYACASARAO.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(7)">
+        <img src="/static/imagens/VOLURYACASARAO.jpg" alt="Volurya em apresentação, foto 8" class="img-fluid rounded gallery-img w-100" loading="lazy" style="height: 200px; object-fit: cover;" role="button" tabindex="0" aria-label="Abrir foto 8 na galeria" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(7)}" onclick="openLightbox(7)">
       </div>
       <div class="col">
-        <img src="/static/imagens/VOLURYA - CENA ROCK-3.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(8)">
+        <img src="/static/imagens/VOLURYA - CENA ROCK-3.jpg" alt="Volurya em apresentação, foto 9" class="img-fluid rounded gallery-img w-100" loading="lazy" style="height: 200px; object-fit: cover;" role="button" tabindex="0" aria-label="Abrir foto 9 na galeria" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(8)}" onclick="openLightbox(8)">
       </div>
       <div class="col">
-        <img src="/static/imagens/VOLURYA - CENA ROCK-13.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(9)">
+        <img src="/static/imagens/VOLURYA - CENA ROCK-13.jpg" alt="Volurya em apresentação, foto 10" class="img-fluid rounded gallery-img w-100" loading="lazy" style="height: 200px; object-fit: cover;" role="button" tabindex="0" aria-label="Abrir foto 10 na galeria" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(9)}" onclick="openLightbox(9)">
       </div>
       <div class="col">
-        <img src="/static/imagens/VOLURYA - CENA ROCK-18.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(10)">
+        <img src="/static/imagens/VOLURYA - CENA ROCK-18.jpg" alt="Volurya em apresentação, foto 11" class="img-fluid rounded gallery-img w-100" loading="lazy" style="height: 200px; object-fit: cover;" role="button" tabindex="0" aria-label="Abrir foto 11 na galeria" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(10)}" onclick="openLightbox(10)">
       </div>
       <div class="col">
-        <img src="/static/imagens/VOLURYA - CENA ROCK-24.jpg" class="img-fluid rounded gallery-img w-100" style="height: 200px; object-fit: cover;" onclick="openLightbox(11)">
+        <img src="/static/imagens/VOLURYA - CENA ROCK-24.jpg" alt="Volurya em apresentação, foto 12" class="img-fluid rounded gallery-img w-100" loading="lazy" style="height: 200px; object-fit: cover;" role="button" tabindex="0" aria-label="Abrir foto 12 na galeria" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(11)}" onclick="openLightbox(11)">
       </div>
 
+<!-- VOLURYA_GALLERY_2026_START -->
+      <div class="col">
+        <img src="/static/imagens/galeria-2026/foto-01-mini.webp" alt="Volurya — Banda reunida no palco"
+             class="img-fluid rounded gallery-img w-100" loading="lazy" decoding="async"
+             style="height:200px;object-fit:cover" role="button" tabindex="0"
+             aria-label="Ampliar fotografia 13 da galeria"
+             onclick="openLightbox(12)"
+             onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(12)}">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/galeria-2026/foto-02-mini.webp" alt="Volurya — Performance do baixo em iluminação vermelha"
+             class="img-fluid rounded gallery-img w-100" loading="lazy" decoding="async"
+             style="height:200px;object-fit:cover" role="button" tabindex="0"
+             aria-label="Ampliar fotografia 14 da galeria"
+             onclick="openLightbox(13)"
+             onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(13)}">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/galeria-2026/foto-03-mini.webp" alt="Volurya — Performance do baixo em iluminação clara"
+             class="img-fluid rounded gallery-img w-100" loading="lazy" decoding="async"
+             style="height:200px;object-fit:cover" role="button" tabindex="0"
+             aria-label="Ampliar fotografia 15 da galeria"
+             onclick="openLightbox(14)"
+             onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(14)}">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/galeria-2026/foto-04-mini.webp" alt="Volurya — Guitarra durante o show"
+             class="img-fluid rounded gallery-img w-100" loading="lazy" decoding="async"
+             style="height:200px;object-fit:cover" role="button" tabindex="0"
+             aria-label="Ampliar fotografia 16 da galeria"
+             onclick="openLightbox(15)"
+             onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(15)}">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/galeria-2026/foto-05-mini.webp" alt="Volurya — Vocalista durante a apresentação"
+             class="img-fluid rounded gallery-img w-100" loading="lazy" decoding="async"
+             style="height:200px;object-fit:cover" role="button" tabindex="0"
+             aria-label="Ampliar fotografia 17 da galeria"
+             onclick="openLightbox(16)"
+             onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(16)}">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/galeria-2026/foto-06-mini.webp" alt="Volurya — Baterista durante a apresentação"
+             class="img-fluid rounded gallery-img w-100" loading="lazy" decoding="async"
+             style="height:200px;object-fit:cover" role="button" tabindex="0"
+             aria-label="Ampliar fotografia 18 da galeria"
+             onclick="openLightbox(17)"
+             onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(17)}">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/galeria-2026/foto-07-mini.webp" alt="Volurya — Guitarrista em palco"
+             class="img-fluid rounded gallery-img w-100" loading="lazy" decoding="async"
+             style="height:200px;object-fit:cover" role="button" tabindex="0"
+             aria-label="Ampliar fotografia 19 da galeria"
+             onclick="openLightbox(18)"
+             onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(18)}">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/galeria-2026/foto-08-mini.webp" alt="Volurya — Vocalista em meio à fumaça do palco"
+             class="img-fluid rounded gallery-img w-100" loading="lazy" decoding="async"
+             style="height:200px;object-fit:cover" role="button" tabindex="0"
+             aria-label="Ampliar fotografia 20 da galeria"
+             onclick="openLightbox(19)"
+             onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(19)}">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/galeria-2026/foto-09-mini.webp" alt="Volurya — Guitarrista cantando e tocando"
+             class="img-fluid rounded gallery-img w-100" loading="lazy" decoding="async"
+             style="height:200px;object-fit:cover" role="button" tabindex="0"
+             aria-label="Ampliar fotografia 21 da galeria"
+             onclick="openLightbox(20)"
+             onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(20)}">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/galeria-2026/foto-10-mini.webp" alt="Volurya — Baixista durante o show"
+             class="img-fluid rounded gallery-img w-100" loading="lazy" decoding="async"
+             style="height:200px;object-fit:cover" role="button" tabindex="0"
+             aria-label="Ampliar fotografia 22 da galeria"
+             onclick="openLightbox(21)"
+             onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(21)}">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/galeria-2026/foto-11-mini.webp" alt="Volurya — Guitarrista sob iluminação fria"
+             class="img-fluid rounded gallery-img w-100" loading="lazy" decoding="async"
+             style="height:200px;object-fit:cover" role="button" tabindex="0"
+             aria-label="Ampliar fotografia 23 da galeria"
+             onclick="openLightbox(22)"
+             onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(22)}">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/galeria-2026/foto-12-mini.webp" alt="Volurya — Bateria durante o show"
+             class="img-fluid rounded gallery-img w-100" loading="lazy" decoding="async"
+             style="height:200px;object-fit:cover" role="button" tabindex="0"
+             aria-label="Ampliar fotografia 24 da galeria"
+             onclick="openLightbox(23)"
+             onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(23)}">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/galeria-2026/foto-13-mini.webp" alt="Volurya — Baixista com iluminação baixa"
+             class="img-fluid rounded gallery-img w-100" loading="lazy" decoding="async"
+             style="height:200px;object-fit:cover" role="button" tabindex="0"
+             aria-label="Ampliar fotografia 25 da galeria"
+             onclick="openLightbox(24)"
+             onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(24)}">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/galeria-2026/foto-14-mini.webp" alt="Volurya — Guitarrista em frente ao palco"
+             class="img-fluid rounded gallery-img w-100" loading="lazy" decoding="async"
+             style="height:200px;object-fit:cover" role="button" tabindex="0"
+             aria-label="Ampliar fotografia 26 da galeria"
+             onclick="openLightbox(25)"
+             onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(25)}">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/galeria-2026/foto-15-mini.webp" alt="Volurya — Vocalista durante a apresentação"
+             class="img-fluid rounded gallery-img w-100" loading="lazy" decoding="async"
+             style="height:200px;object-fit:cover" role="button" tabindex="0"
+             aria-label="Ampliar fotografia 27 da galeria"
+             onclick="openLightbox(26)"
+             onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(26)}">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/galeria-2026/foto-16-mini.webp" alt="Volurya — Vocalista após o movimento no palco"
+             class="img-fluid rounded gallery-img w-100" loading="lazy" decoding="async"
+             style="height:200px;object-fit:cover" role="button" tabindex="0"
+             aria-label="Ampliar fotografia 28 da galeria"
+             onclick="openLightbox(27)"
+             onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(27)}">
+      </div>
+      <div class="col">
+        <img src="/static/imagens/galeria-2026/foto-17-mini.webp" alt="Volurya — Vocalista com microfone"
+             class="img-fluid rounded gallery-img w-100" loading="lazy" decoding="async"
+             style="height:200px;object-fit:cover" role="button" tabindex="0"
+             aria-label="Ampliar fotografia 29 da galeria"
+             onclick="openLightbox(28)"
+             onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openLightbox(28)}">
+      </div>
+      <div class="col">
+        <a class="vol-gallery-video-trigger" href="/static/videos/galeria-2026/video-01.mp4"
+           data-vol-gallery-video="1" data-poster="/static/imagens/galeria-2026/video-01-capa.webp"
+           aria-label="Reproduzir vídeo 1 da Volurya">
+          <img src="/static/imagens/galeria-2026/video-01-capa.webp" alt="Prévia do vídeo 1 da Volurya ao vivo" loading="lazy" decoding="async">
+          <span class="vol-gallery-video-play" aria-hidden="true">▶</span>
+          <span class="vol-gallery-video-label">VÍDEO 01 · AO VIVO</span>
+        </a>
+      </div>
+      <div class="col">
+        <a class="vol-gallery-video-trigger" href="/static/videos/galeria-2026/video-02.mp4"
+           data-vol-gallery-video="2" data-poster="/static/imagens/galeria-2026/video-02-capa.webp"
+           aria-label="Reproduzir vídeo 2 da Volurya">
+          <img src="/static/imagens/galeria-2026/video-02-capa.webp" alt="Prévia do vídeo 2 da Volurya ao vivo" loading="lazy" decoding="async">
+          <span class="vol-gallery-video-play" aria-hidden="true">▶</span>
+          <span class="vol-gallery-video-label">VÍDEO 02 · AO VIVO</span>
+        </a>
+      </div>
+      <div class="col">
+        <a class="vol-gallery-video-trigger" href="/static/videos/galeria-2026/video-03.mp4"
+           data-vol-gallery-video="3" data-poster="/static/imagens/galeria-2026/video-03-capa.webp"
+           aria-label="Reproduzir vídeo 3 da Volurya">
+          <img src="/static/imagens/galeria-2026/video-03-capa.webp" alt="Prévia do vídeo 3 da Volurya ao vivo" loading="lazy" decoding="async">
+          <span class="vol-gallery-video-play" aria-hidden="true">▶</span>
+          <span class="vol-gallery-video-label">VÍDEO 03 · AO VIVO</span>
+        </a>
+      </div>
+<!-- VOLURYA_GALLERY_2026_END -->
     </div>
   </div>
 
   <!-- Lightbox -->
   <div class="lightbox-overlay" id="lightbox" onclick="closeLightboxOnOverlay(event)">
-    <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
-    <button class="lightbox-prev" onclick="changeLightbox(-1)">&#8249;</button>
-    <img id="lightbox-img" src="">
-    <button class="lightbox-next" onclick="changeLightbox(1)">&#8250;</button>
+    <span class="lightbox-close" role="button" tabindex="0" aria-label="Fechar galeria" onclick="closeLightbox()" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault(); closeLightbox()}">&times;</span>
+    <button class="lightbox-prev" aria-label="Foto anterior" onclick="changeLightbox(-1)">&#8249;</button>
+    <img id="lightbox-img" src="" alt="Foto ampliada da Volurya">
+    <button class="lightbox-next" aria-label="Próxima foto" onclick="changeLightbox(1)">&#8250;</button>
   </div>
 
-  <!-- Footer -->
-  <footer class="bg-dark py-5 text-center mt-5">
-    <div class="container">
-      <div class="mb-4">
-        <img src="/static/imagens/VOLURYALOGOVAZADA.png" alt="Volurya" style="max-width: 120px; opacity: 0.9;">
-      </div>
-      <div class="mb-4">
-        <a href="#" class="fa fa-facebook mx-2" style="font-size: 24px; color: #aaa; text-decoration: none;"></a>
-        <a href="#" class="fa fa-instagram mx-2" style="font-size: 24px; color: #aaa; text-decoration: none;"></a>
-        <a href="#" class="fa fa-youtube mx-2" style="font-size: 24px; color: #aaa; text-decoration: none;"></a>
-        <a href="#" class="fa fa-spotify mx-2" style="font-size: 24px; color: #aaa; text-decoration: none;"></a>
-      </div>
-      <hr style="border-color: #333; max-width: 400px; margin: 0 auto 1rem;">
-      <p class="text-danger mb-0 small">
-        VOLURYA © 2026 — Fortaleza, Brasil
-        <br>
-        <span style="font-size: 11px; color: #ff4444;">Made with ❤️ and lots of distortion</span>
-      </p>
+    <!-- VOLURYA_GALLERY_2026_VIDEO_DIALOG -->
+  <dialog id="vol-gallery-video-dialog" class="vol-gallery-video-dialog" aria-label="Vídeo da Volurya">
+    <div class="vol-gallery-dialog-content">
+      <button type="button" class="vol-gallery-dialog-close" aria-label="Fechar vídeo">✕</button>
+      <video id="vol-gallery-video-player" controls playsinline preload="none" aria-label="Vídeo da Volurya ao vivo"></video>
     </div>
+  </dialog>
+</main>
+  <footer class="vol-footer" id="socialsection">
+    <div class="vol-wrap vol-footer-main"><div><img src="/static/imagens/VOLURYALOGOVAZADA.png" alt="Volurya" width="145" height="115"><p>METAL DE FORTALEZA, BRASIL.</p></div>
+      <div class="vol-footer-links"><a href="/">Início</a><a href="/about">A banda</a><a href="/store">Loja</a><a href="/login">Minha conta</a></div>
+    </div>
+    <div class="vol-wrap vol-footer-bottom"><span>© 2026 VOLURYA. TODOS OS DIREITOS RESERVADOS.</span><span>FEITO COM PESO E PROPÓSITO.</span></div>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -279,6 +439,24 @@
       '/static/imagens/VOLURYA - CENA ROCK-13.jpg',
       '/static/imagens/VOLURYA - CENA ROCK-18.jpg',
       '/static/imagens/VOLURYA - CENA ROCK-24.jpg',
+          // VOLURYA_GALLERY_2026_PHOTOS
+      '/static/imagens/galeria-2026/foto-01.webp',
+      '/static/imagens/galeria-2026/foto-02.webp',
+      '/static/imagens/galeria-2026/foto-03.webp',
+      '/static/imagens/galeria-2026/foto-04.webp',
+      '/static/imagens/galeria-2026/foto-05.webp',
+      '/static/imagens/galeria-2026/foto-06.webp',
+      '/static/imagens/galeria-2026/foto-07.webp',
+      '/static/imagens/galeria-2026/foto-08.webp',
+      '/static/imagens/galeria-2026/foto-09.webp',
+      '/static/imagens/galeria-2026/foto-10.webp',
+      '/static/imagens/galeria-2026/foto-11.webp',
+      '/static/imagens/galeria-2026/foto-12.webp',
+      '/static/imagens/galeria-2026/foto-13.webp',
+      '/static/imagens/galeria-2026/foto-14.webp',
+      '/static/imagens/galeria-2026/foto-15.webp',
+      '/static/imagens/galeria-2026/foto-16.webp',
+      '/static/imagens/galeria-2026/foto-17.webp',
     ];
 
     let currentIndex = 0;
@@ -286,6 +464,7 @@
     function openLightbox(index) {
       currentIndex = index;
       document.getElementById('lightbox-img').src = galleryImages[index];
+      document.getElementById('lightbox-img').alt = `Foto ${index + 1} da Volurya em destaque`;
       document.getElementById('lightbox').classList.add('active');
       document.body.style.overflow = 'hidden';
     }
@@ -304,6 +483,7 @@
     function changeLightbox(direction) {
       currentIndex = (currentIndex + direction + galleryImages.length) % galleryImages.length;
       document.getElementById('lightbox-img').src = galleryImages[currentIndex];
+      document.getElementById('lightbox-img').alt = `Foto ${currentIndex + 1} da Volurya em destaque`;
     }
 
     // Fechar com ESC
@@ -313,59 +493,6 @@
       if (e.key === 'ArrowRight') changeLightbox(1);
     });
   </script>
+  <script defer src="/static/js/galeria-2026.js"></script>
 </body>
 </html>
-
-<!--
-
-
-
- Placeholders não preenchidos em produção
-htmlFundada em [ANO], a banda rapidamente...
-Com [N] anos de estrada, [N] álbuns...
-O nome VOLURYA representa [SIGNIFICADO DO NOME]
-[Bio curta do membro]
-[YEAR] [NAME MEANING]
-Oito placeholders visíveis para o usuário final. Conteúdo incompleto em produção prejudica credibilidade.
-
-🟡 Links de redes sociais sem destino
-html<a href="#" class="fa fa-facebook ..."></a>
-<a href="#" class="fa fa-instagram ..."></a>
-<a href="#" class="fa fa-youtube ..."></a>
-<a href="#" class="fa fa-spotify ..."></a>
-Todos com href="#" — não levam a lugar nenhum. Adicione href="javascript:void(0)" ou os links reais, e aria-label para acessibilidade:
-html<a href="https://instagram.com/volurya" aria-label="Instagram da Volurya" ...>
-
-🟡 Galeria duplica lista de imagens
-javascriptconst galleryImages = [
-    '/static/imagens/VOLURYACENAROCK.jpg',
-    // ... 12 imagens
-]
-As 12 imagens aparecem duas vezes — uma no HTML (onclick="openLightbox(0)") e outra no array JavaScript. Se uma imagem for adicionada/removida, precisa ser atualizada em dois lugares. Gere o HTML da galeria via JavaScript a partir do array, ou use data-index nos elementos.
-
-🟡 onclick inline nos elementos da galeria
-html<img ... onclick="openLightbox(0)">
-Mistura HTML e JavaScript. O índice hardcoded significa que reordenar imagens quebra a galeria. Use event listeners com data-index:
-html<img ... data-index="0" class="gallery-img">
-javascriptdocument.querySelectorAll('.gallery-img').forEach((img, i) => {
-    img.addEventListener('click', () => openLightbox(i))
-})
-
-🟢 CSS inline misturado com stylesheet
-htmlstyle="height: 200px; object-fit: cover;"  <!-- repetido 12 vezes -->
-<!--style="max-width: 150px;"                   <!-- repetido 4 vezes -->
-<!--Mova para a stylesheet:
-css.gallery-img { height: 200px; object-fit: cover; }
-.member-photo { max-width: 150px; }
-
-🟢 <img> do lightbox sem alt
-html<img id="lightbox-img" src="">
-Sem alt — inacessível para leitores de tela. Atualize o alt dinamicamente ao abrir:
-javascriptdocument.getElementById('lightbox-img').alt = `Foto ${currentIndex + 1} da galeria`
-
-🟢 Font Awesome 4.7 desatualizado
-html<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-Versão 4.7 de 2017. Font Awesome 6 tem ícones modernos e melhor suporte. Para o Spotify em particular, FA 4.7 não tem o ícone oficial.
-
-
--->

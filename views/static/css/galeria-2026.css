@@ -1,0 +1,29 @@
+/* Galeria Volurya 2026: estilos isolados; sem tocar no catálogo/checkout. */
+.vol-gallery-container { max-width: 1360px; margin-inline: auto; padding-inline: clamp(16px, 3vw, 40px); }
+.vol-gallery-summary { margin: 0 0 30px; text-align: center; font: 700 17px/1.4 var(--vol-display, Impact, sans-serif); letter-spacing: .14em; color: #cfc8cb; }
+.vol-gallery-summary span { color: #ef2642; margin-inline: 9px; }
+.vol-gallery-container #gallery .col { min-width: 0; }
+.vol-gallery-container #gallery .gallery-img,
+.vol-gallery-container .vol-gallery-video-trigger { display: block; width: 100%; height: 220px !important; border-radius: 0 !important; border: 1px solid #49343a; overflow: hidden; background: #0c0c0e; }
+.vol-gallery-container #gallery .gallery-img { object-fit: cover; cursor: zoom-in; transition: filter .2s ease, border-color .2s ease; }
+.vol-gallery-container #gallery .gallery-img:is(:hover,:focus-visible) { filter: brightness(1.12); border-color: #e21a37; }
+.vol-gallery-video-trigger { position: relative; text-decoration: none; transition: border-color .2s, transform .2s; }
+.vol-gallery-video-trigger:hover, .vol-gallery-video-trigger:focus-visible { border-color: #fa2942; transform: translateY(-2px); }
+.vol-gallery-video-trigger img { display: block; width: 100%; height: 100%; object-fit: cover; opacity: .72; filter: contrast(1.1); }
+.vol-gallery-video-trigger::after { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 45%,rgba(0,0,0,.85)); pointer-events: none; }
+.vol-gallery-video-play { position: absolute; z-index: 1; left: 50%; top: 50%; transform: translate(-50%,-50%); border-radius: 50%; display: grid; place-items: center; width: 64px; height: 64px; color: white; background: #ce0924; box-shadow: 0 0 0 5px #ffffff22; font-size: 25px; padding-left: 4px; }
+.vol-gallery-video-label { position: absolute; z-index: 1; bottom: 12px; left: 15px; color: #fff; font: 800 18px var(--vol-display, Impact, sans-serif); letter-spacing: .1em; }
+.vol-gallery-video-dialog { border: 1px solid #8c2031; padding: 0; background: #09090a; color: #fff; width: min(94vw, 1000px); max-width: none; max-height: 94vh; overflow: visible; }
+.vol-gallery-video-dialog::backdrop { background: rgba(0,0,0,.92); backdrop-filter: blur(7px); }
+.vol-gallery-dialog-content { position: relative; padding: 44px 12px 12px; }
+.vol-gallery-video-dialog video { display: block; width: 100%; max-height: calc(94vh - 60px); object-fit: contain; background: #000; }
+.vol-gallery-dialog-close { position: absolute; top: 5px; right: 10px; background: transparent; border: 0; color: #fff; padding: 0 11px; font-size: 26px; line-height: 34px; cursor: pointer; }
+.vol-gallery-dialog-close:hover { color: #ff2947; }
+@media (max-width: 767px) {
+ .vol-gallery-container #gallery .gallery-img, .vol-gallery-container .vol-gallery-video-trigger { height: 190px !important; }
+ .vol-gallery-video-play { width: 50px; height: 50px; font-size: 20px; }
+ .vol-gallery-video-label { font-size: 14px; left: 8px; bottom: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+ .vol-gallery-video-trigger, .vol-gallery-container #gallery .gallery-img { transition: none; }
+}
