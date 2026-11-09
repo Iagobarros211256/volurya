@@ -1,8 +1,6 @@
 // static/js/auth.js - ÚNICO arquivo de autenticação
 
-const API_BASE = window.location.hostname.includes('localhost')
-  ? 'http://localhost:8080/api'
-  : 'https://volurya.onrender.com/api';
+const API_BASE = '/api';
 
 const AUTH_REDIRECT_KEY = 'auth_redirect_to';
 
