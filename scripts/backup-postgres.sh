@@ -2,8 +2,21 @@
 set -euo pipefail
 umask 077
 
-BACKUP_DIR="/var/backups/volurya"
-CONTAINER="volurya-postgres-1"
+BACKUP_DIR="${VOLURYA_BACKUP_DIR:-/var/backups/volurya}"
+PROJECT_DIR="${VOLURYA_PROJECT_DIR:?Defina VOLURYA_PROJECT_DIR}"
+ENV_FILE="${VOLURYA_ENV_FILE:-$PROJECT_DIR/.env}"
+COMPOSE_FILE="$PROJECT_DIR/compose.prod.yml"
+
+test -d "$PROJECT_DIR"
+test -f "$ENV_FILE"
+test -f "$COMPOSE_FILE"
+
+compose() {
+  VOLURYA_ENV_FILE="$ENV_FILE" docker compose \
+    --project-directory "$PROJECT_DIR" \
+    --env-file "$ENV_FILE" \
+    -f "$COMPOSE_FILE" "$@"
+}
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 
 mkdir -p "$BACKUP_DIR"
@@ -13,12 +26,12 @@ FINAL_FILE="$BACKUP_DIR/volurya-$TIMESTAMP.dump"
 
 trap 'rm -f "$TEMP_FILE"' EXIT
 
-docker exec "$CONTAINER" \
-  pg_dump -U volurya -d volurya_db -Fc > "$TEMP_FILE"
+compose exec -T postgres sh -ec \
+  'exec pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$TEMP_FILE"
 
 test -s "$TEMP_FILE"
 
-docker exec -i "$CONTAINER" \
+compose exec -T postgres \
   pg_restore --list < "$TEMP_FILE" > /dev/null
 
 mv "$TEMP_FILE" "$FINAL_FILE"

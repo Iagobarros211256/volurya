@@ -70,6 +70,57 @@ mas não substitui completamente testes em dispositivos físicos.
 - Pagamentos reais: não validados para produção.
 - VPS StayCloud: deploy da aplicação pendente.
 
+## Infraestrutura e recuperação — antes da publicação
+
+- [ ] Confirmar o nome do projeto Docker Compose e do contêiner PostgreSQL.
+- [ ] Fazer o script de backup usar o banco e usuário efetivos de produção.
+- [ ] Instalar o script no caminho esperado pelo serviço systemd.
+- [ ] Validar o timer de backup na VPS e a retenção dos arquivos.
+- [ ] Testar restauração completa em um PostgreSQL isolado.
+- [ ] Definir uma cópia externa à VPS para recuperação de desastres.
+- [ ] Validar o carregamento das variáveis pelo Docker Compose.
+- [ ] Confirmar o WhatsApp comercial autorizado.
+- [ ] Preparar o cadastro reproduzível da camiseta e suas variantes.
+
+## Evidência de backup e restauração — 09/11/2026
+
+Teste local realizado em PostgreSQL 16, em ambiente Docker
+Compose descartável e separado dos bancos dos demais projetos.
+
+- [x] Executar o script real `scripts/backup-postgres.sh`.
+- [x] Gerar dump PostgreSQL no formato customizado.
+- [x] Validar a leitura do índice com `pg_restore --list`.
+- [x] Restaurar o dump em outro banco do laboratório.
+- [x] Comparar os três registros originais e restaurados.
+
+Resultado: 3/3 registros idênticos, incluindo identificadores,
+descrições e valores em centavos.
+
+Limitação: teste realizado com uma tabela de referência.
+Não comprova recuperação de uma base de produção completa.
+
+Continuam pendentes: instalação e validação do systemd na VPS,
+backup externo, retenção operacional e simulação de recuperação
+representativa da produção.
+
+## Revalidação do backup — 12/11/2026
+
+Segunda validação funcional realizada em PostgreSQL 16,
+utilizando a versão atualizada de scripts/backup-postgres.sh.
+
+- [x] Identificar o laboratório por COMPOSE_PROJECT_NAME.
+- [x] Carregar o ambiente utilizando VOLURYA_ENV_FILE.
+- [x] Gerar e validar um novo dump PostgreSQL.
+- [x] Restaurar o dump em outro banco isolado.
+- [x] Comparar os três registros: 3/3 idênticos.
+- [x] Remover contêiner, volume, rede e arquivos temporários.
+
+Resultado: segunda validação local aprovada, sem divergências.
+
+Esta evidência não substitui a validação de recuperação
+completa da base de produção, a instalação do systemd,
+o teste de retenção ou a cópia externa dos backups.
+
 ## Estratégia
 
 1. Publicar o site e o catálogo.
